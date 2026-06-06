@@ -43,6 +43,13 @@ pub struct CONSOLE_SELECTION_INFO {
     pub srSelection: SMALL_RECT,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[repr(C)]
+pub struct POINT {
+    pub x: i32,
+    pub y: i32,
+}
+
 #[cfg(windows)]
 #[link(name = "user32")]
 unsafe extern "system" {
@@ -67,6 +74,7 @@ unsafe extern "system" {
     fn MonitorFromWindow(h_wnd: *mut std::ffi::c_void, dw_flags: u32) -> *mut std::ffi::c_void;
     fn GetMonitorInfoW(h_monitor: *mut std::ffi::c_void, lp_mi: *mut MONITORINFO) -> i32;
     fn GetAsyncKeyState(v_key: i32) -> i16;
+    fn GetCursorPos(lp_point: *mut POINT) -> i32;
 }
 
 #[cfg(windows)]
@@ -276,8 +284,8 @@ impl BorderlessConsole {
 
             let dpi = unsafe { GetDpiForWindow(hwnd) };
             let scale = dpi as f32 / 96.0;
-            let width = (780.0 * scale) as i32;
-            let height = (520.0 * scale) as i32;
+            let width = (900.0 * scale) as i32;
+            let height = (900.0 * scale) as i32;
 
             let mut x = 100;
             let mut y = 100;
@@ -382,6 +390,52 @@ pub fn center_console_window() {
                     );
                 }
             }
+        }
+    }
+}
+
+pub fn query_cursor_pos() -> Option<(i32, i32)> {
+    #[cfg(windows)]
+    unsafe {
+        let mut pt = POINT::default();
+        if GetCursorPos(&mut pt) != 0 {
+            Some((pt.x, pt.y))
+        } else {
+            None
+        }
+    }
+    #[cfg(not(windows))]
+    None
+}
+
+pub fn get_window_rect() -> Option<RECT> {
+    #[cfg(windows)]
+    unsafe {
+        let hwnd = GetConsoleWindow();
+        if !hwnd.is_null() {
+            let mut rect = RECT::default();
+            if GetWindowRect(hwnd, &mut rect) != 0 {
+                return Some(rect);
+            }
+        }
+    }
+    None
+}
+
+pub fn set_window_pos(x: i32, y: i32) {
+    #[cfg(windows)]
+    unsafe {
+        let hwnd = GetConsoleWindow();
+        if !hwnd.is_null() {
+            SetWindowPos(
+                hwnd,
+                std::ptr::null_mut(),
+                x,
+                y,
+                0,
+                0,
+                0x0001 | 0x0004 | 0x0010, // SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+            );
         }
     }
 }
@@ -899,5 +953,61 @@ pub fn copy_text_to_clipboard(text: &str) -> std::io::Result<()> {
         CloseClipboard();
     }
     Ok(())
+}
+
+/// If the application is running in a pseudoconsole (like Windows Terminal) and we want it
+/// to run as a standalone styled window, relaunch it inside conhost.exe.
+pub fn relaunch_in_conhost_if_needed() {
+    #[cfg(windows)]
+    {
+        // 1. Check if we have the --relaunched flag to prevent any potential loops
+        let args: Vec<String> = std::env::args().collect();
+        if args.iter().any(|arg| arg == "--relaunched") {
+            return;
+        }
+
+        // 2. Check if there are arguments that request stdout/diagnostic mode
+        for arg in &args {
+            let lower = arg.to_lowercase();
+            if lower == "--help" || lower == "-h" || lower == "help" ||
+               lower == "--version" || lower == "-v" || lower == "version" ||
+               lower == "install" || lower == "--install" {
+                return;
+            }
+        }
+
+        // 3. Detect if we are in conhost or a pseudoconsole (like Windows Terminal)
+        let hwnd = unsafe { GetConsoleWindow() };
+        let is_conhost = if hwnd.is_null() {
+            false
+        } else {
+            let mut rect = RECT::default();
+            let ok = unsafe { GetWindowRect(hwnd, &mut rect) };
+            let style = unsafe { GetWindowLongPtrW(hwnd, -16) }; // GWL_STYLE = -16
+            ok != 0 && (rect.right - rect.left) > 0 && style != 0
+        };
+
+        if !is_conhost {
+            // Relaunch in conhost.exe
+            let current_exe = std::env::current_exe().unwrap();
+            let mut cmd_args = vec![
+                "/c".to_string(),
+                "start".to_string(),
+                "".to_string(),
+                "conhost.exe".to_string(),
+                current_exe.to_str().unwrap().to_string(),
+            ];
+            // Pass all original args, plus the --relaunched flag
+            for arg in args.into_iter().skip(1) {
+                cmd_args.push(arg);
+            }
+            cmd_args.push("--relaunched".to_string());
+
+            let _ = std::process::Command::new("cmd.exe")
+                .args(&cmd_args)
+                .spawn();
+            std::process::exit(0);
+        }
+    }
 }
 

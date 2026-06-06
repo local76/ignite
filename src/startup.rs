@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
-use serde::{Deserialize, Serialize};
-
 
 #[derive(Debug, Clone)]
 pub struct StartupItem {
@@ -403,7 +401,34 @@ pub fn estimate_startup_impact(command: &str) -> String {
     "Low".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+#[repr(C)]
+struct SYSTEMTIME {
+    wYear: u16,
+    wMonth: u16,
+    wDayOfWeek: u16,
+    wDay: u16,
+    wHour: u16,
+    wMinute: u16,
+    wSecond: u16,
+    wMilliseconds: u16,
+}
+
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn GetLocalTime(lp_system_time: *mut SYSTEMTIME);
+}
+
+fn get_rfc3339_timestamp() -> String {
+    let mut st: SYSTEMTIME = unsafe { std::mem::zeroed() };
+    unsafe { GetLocalTime(&mut st); }
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}",
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds
+    )
+}
+
+#[derive(Debug, Clone)]
 pub struct BackupEntry {
     pub uuid: String,
     pub timestamp: String, // ISO 8601 string
@@ -414,7 +439,7 @@ pub struct BackupEntry {
     pub key_name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct BackupDatabase {
     pub entries: Vec<BackupEntry>,
 }
@@ -424,7 +449,7 @@ impl BackupDatabase {
         std::env::var("APPDATA").ok().map(|appdata| {
             PathBuf::from(appdata)
                 .join("rStartup")
-                .join("backups.json")
+                .join("backups.yaml")
         })
     }
 
@@ -432,10 +457,77 @@ impl BackupDatabase {
         let Some(path) = Self::file_path() else { return Self::default(); };
         if !path.exists() { return Self::default(); }
         
-        std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|content| serde_json::from_str(&content).ok())
-            .unwrap_or_default()
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            return Self::default();
+        };
+
+        let mut entries = Vec::new();
+        let mut current_entry: Option<BackupEntry> = None;
+
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            if let Some(pos) = line.find(':') {
+                let key = line[..pos].trim();
+                let val = line[pos + 1..].trim();
+                match key {
+                    "uuid" => {
+                        if let Some(entry) = current_entry.take() {
+                            entries.push(entry);
+                        }
+                        current_entry = Some(BackupEntry {
+                            uuid: val.to_string(),
+                            timestamp: String::new(),
+                            name: String::new(),
+                            command: String::new(),
+                            location_type: String::new(),
+                            location_path: String::new(),
+                            key_name: String::new(),
+                        });
+                    }
+                    "timestamp" => {
+                        if let Some(ref mut entry) = current_entry {
+                            entry.timestamp = val.to_string();
+                        }
+                    }
+                    "name" => {
+                        if let Some(ref mut entry) = current_entry {
+                            entry.name = val.to_string();
+                        }
+                    }
+                    "command" => {
+                        if let Some(ref mut entry) = current_entry {
+                            entry.command = val.to_string();
+                        }
+                    }
+                    "location_type" => {
+                        if let Some(ref mut entry) = current_entry {
+                            entry.location_type = val.to_string();
+                        }
+                    }
+                    "location_path" => {
+                        if let Some(ref mut entry) = current_entry {
+                            entry.location_path = val.to_string();
+                        }
+                    }
+                    "key_name" => {
+                        if let Some(ref mut entry) = current_entry {
+                            entry.key_name = val.to_string();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if let Some(entry) = current_entry {
+            entries.push(entry);
+        }
+
+        BackupDatabase { entries }
     }
 
     pub fn save(&self) -> std::io::Result<()> {
@@ -445,13 +537,37 @@ impl BackupDatabase {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let content = serde_json::to_string_pretty(self)?;
+
+        let mut content = String::new();
+        content.push_str("# rStartup Backups Database\n# ---------------------------\n\n");
+        for entry in &self.entries {
+            content.push_str(&format!(
+                "uuid: {}\n\
+                 timestamp: {}\n\
+                 name: {}\n\
+                 command: {}\n\
+                 location_type: {}\n\
+                 location_path: {}\n\
+                 key_name: {}\n\n",
+                entry.uuid,
+                entry.timestamp,
+                entry.name,
+                entry.command,
+                entry.location_type,
+                entry.location_path,
+                entry.key_name,
+            ));
+        }
         std::fs::write(path, content)
     }
 
     pub fn add_item(&mut self, item: &StartupItem) -> std::io::Result<()> {
-        let timestamp_now = chrono::Local::now().to_rfc3339();
-        let simple_id = format!("{}-{}", item.name, chrono::Utc::now().timestamp());
+        let timestamp_now = get_rfc3339_timestamp();
+        let epoch = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let simple_id = format!("{}-{}", item.name, epoch);
         let entry = BackupEntry {
             uuid: simple_id,
             timestamp: timestamp_now,

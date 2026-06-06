@@ -399,6 +399,11 @@ struct App {
     show_backups: bool,
     backup_db: startup::BackupDatabase,
     selected_backup: usize,
+    quit_btn_bounds: Option<(u16, u16, u16)>,
+    help_btn_bounds: Option<(u16, u16, u16)>,
+    drag_active: bool,
+    drag_start_cursor: Option<(i32, i32)>,
+    drag_start_window: Option<(i32, i32)>,
 }
 
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
@@ -525,6 +530,11 @@ impl App {
             show_backups: false,
             backup_db: startup::BackupDatabase::load(),
             selected_backup: 0,
+            quit_btn_bounds: None,
+            help_btn_bounds: None,
+            drag_active: false,
+            drag_start_cursor: None,
+            drag_start_window: None,
         }
     }
 
@@ -705,19 +715,24 @@ fn main() -> io::Result<()> {
                 }
                 return Ok(());
             }
-            "tui" => {
+            "tui" | "--relaunched" => {
                 // Proceed to run TUI
             }
             other => {
-                eprintln!("Unknown command: {}", other);
-                print_help();
-                std::process::exit(1);
+                if other == "--relaunched" {
+                    // Fallback just in case
+                } else {
+                    eprintln!("Unknown command: {}", other);
+                    print_help();
+                    std::process::exit(1);
+                }
             }
         }
     }
 
     // Load application configuration
     let config = config::AppConfig::load();
+    win32::relaunch_in_conhost_if_needed();
 
     // Initialize logging switch
     logger::set_event_log_enabled(config.enable_event_log);
@@ -1061,17 +1076,61 @@ fn main() -> io::Result<()> {
                 }
                 Event::Mouse(mouse) => match mouse.kind {
                     event::MouseEventKind::Down(event::MouseButton::Left) => {
-                        app.selection_start = Some((mouse.column, mouse.row));
-                        app.selection_end = Some((mouse.column, mouse.row));
-                        app.selection_pending_copy = false;
+                        let mut clicked_btn = false;
+                        if let Some((btn_y, btn_start, btn_end)) = app.quit_btn_bounds {
+                            if mouse.row == btn_y && mouse.column >= btn_start && mouse.column < btn_end {
+                                app.should_quit = true;
+                                clicked_btn = true;
+                            }
+                        }
+                        if !clicked_btn {
+                            if let Some((btn_y, btn_start, btn_end)) = app.help_btn_bounds {
+                                if mouse.row == btn_y && mouse.column >= btn_start && mouse.column < btn_end {
+                                    app.show_help = !app.show_help;
+                                    app.set_status(if app.show_help {
+                                        "Help overlay active. Press ESC/q to close.".to_string()
+                                    } else {
+                                        "Help overlay closed.".to_string()
+                                    });
+                                    clicked_btn = true;
+                                }
+                            }
+                        }
+                        if !clicked_btn {
+                            if mouse.row <= 2 {
+                                if let Some(cursor_pos) = win32::query_cursor_pos() {
+                                    if let Some(rect) = win32::get_window_rect() {
+                                        app.drag_active = true;
+                                        app.drag_start_cursor = Some(cursor_pos);
+                                        app.drag_start_window = Some((rect.left, rect.top));
+                                    }
+                                }
+                            } else {
+                                app.selection_start = Some((mouse.column, mouse.row));
+                                app.selection_end = Some((mouse.column, mouse.row));
+                                app.selection_pending_copy = false;
+                            }
+                        }
                     }
                     event::MouseEventKind::Drag(event::MouseButton::Left) => {
-                        if app.selection_start.is_some() {
+                        if app.drag_active {
+                            if let (Some(start_cursor), Some(start_window)) = (app.drag_start_cursor, app.drag_start_window) {
+                                if let Some(curr_cursor) = win32::query_cursor_pos() {
+                                    let dx = curr_cursor.0 - start_cursor.0;
+                                    let dy = curr_cursor.1 - start_cursor.1;
+                                    win32::set_window_pos(start_window.0 + dx, start_window.1 + dy);
+                                }
+                            }
+                        } else if app.selection_start.is_some() {
                             app.selection_end = Some((mouse.column, mouse.row));
                         }
                     }
                     event::MouseEventKind::Up(event::MouseButton::Left) => {
-                        if let (Some(start), Some(end)) = (app.selection_start, app.selection_end) {
+                        if app.drag_active {
+                            app.drag_active = false;
+                            app.drag_start_cursor = None;
+                            app.drag_start_window = None;
+                        } else if let (Some(start), Some(end)) = (app.selection_start, app.selection_end) {
                             if start != end {
                                 app.selection_pending_copy = true;
                             } else {
@@ -1217,7 +1276,8 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let theme = get_theme(app.dark_mode, app.accent_color);
 
     // 0. Terminal Size Layout Guard
-    if size.width < 110 || size.height < 38 {
+    // 0. Terminal Size Layout Guard
+    if size.width < 100 || size.height < 35 {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Rgb(255, 85, 85)))
@@ -1241,7 +1301,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                 "  Current Terminal Size: {}x{}",
                 size.width, size.height
             )),
-            Line::from("  Minimum Required Size: 110x38"),
+            Line::from("  Minimum Required Size: 100x35"),
             Line::from(""),
             Line::from(
                 "  Please resize or maximize your terminal window to resume standard rendering.",
@@ -1283,30 +1343,75 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         ));
 
-    let title_line = Line::from(vec![
-        Span::styled(
-            format!(" rSta v{} ", env!("CARGO_PKG_VERSION")),
-            Style::default()
-                .fg(theme.accent)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" │ ", Style::default().fg(theme.border)),
-        Span::styled(
-            "Press h for help",
-            Style::default()
-                .fg(theme.accent)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" │ ", Style::default().fg(theme.border)),
-        Span::styled(
-            format!("{}@{}", username, host_name),
-            Style::default()
-                .fg(Color::Rgb(255, 215, 0))
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" │ ", Style::default().fg(theme.border)),
-        Span::styled(os_str, Style::default().fg(theme.text_main)),
-    ]);
+    let ver_str = format!(" rSta v{} ", env!("CARGO_PKG_VERSION"));
+    let user_host_str = format!("{}@{}", username, host_name);
+    let os_str_val = os_str.clone();
+
+    let button_y = chunks[0].y + 1;
+    let inner_width = chunks[0].width.saturating_sub(2) as usize;
+    let left_len = ver_str.len() + 3 + user_host_str.len() + 3 + os_str_val.len();
+    let right_len = 6 + 3 + 6;
+
+    let title_line = if inner_width > left_len + right_len {
+        let padding_len = inner_width - (left_len + right_len);
+        let padding_str = " ".repeat(padding_len);
+
+        let help_offset = 1 + left_len + padding_len;
+        let help_start_x = chunks[0].x + help_offset as u16;
+        let help_end_x = help_start_x + 6;
+        app.help_btn_bounds = Some((button_y, help_start_x, help_end_x));
+
+        let quit_offset = help_offset + 6 + 3;
+        let quit_start_x = chunks[0].x + quit_offset as u16;
+        let quit_end_x = quit_start_x + 6;
+        app.quit_btn_bounds = Some((button_y, quit_start_x, quit_end_x));
+
+        Line::from(vec![
+            Span::styled(ver_str, Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            Span::styled(user_host_str, Style::default().fg(Color::Rgb(255, 215, 0)).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            Span::styled(os_str_val, Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(padding_str, Style::default()),
+            // Help button: " help " in yellow background, black text, underlined 'h'
+            Span::styled(" ", Style::default().bg(Color::Rgb(250, 210, 50)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+            Span::styled("h", Style::default().bg(Color::Rgb(250, 210, 50)).fg(Color::Black).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
+            Span::styled("elp ", Style::default().bg(Color::Rgb(250, 210, 50)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            // Quit button: " quit " in red background, white text, underlined 'q'
+            Span::styled(" ", Style::default().bg(Color::Rgb(255, 85, 85)).fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled("q", Style::default().bg(Color::Rgb(255, 85, 85)).fg(Color::White).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
+            Span::styled("uit ", Style::default().bg(Color::Rgb(255, 85, 85)).fg(Color::White).add_modifier(Modifier::BOLD)),
+        ])
+    } else {
+        let help_offset = 1 + ver_str.len() + 3 + user_host_str.len() + 3 + os_str_val.len() + 3;
+        let help_start_x = chunks[0].x + help_offset as u16;
+        let help_end_x = help_start_x + 6;
+        app.help_btn_bounds = Some((button_y, help_start_x, help_end_x));
+
+        let quit_offset = help_offset + 6 + 3;
+        let quit_start_x = chunks[0].x + quit_offset as u16;
+        let quit_end_x = quit_start_x + 6;
+        app.quit_btn_bounds = Some((button_y, quit_start_x, quit_end_x));
+
+        Line::from(vec![
+            Span::styled(ver_str, Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            Span::styled(user_host_str, Style::default().fg(Color::Rgb(255, 215, 0)).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            Span::styled(os_str_val, Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            // Help button: " help " in yellow background, black text, underlined 'h'
+            Span::styled(" ", Style::default().bg(Color::Rgb(250, 210, 50)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+            Span::styled("h", Style::default().bg(Color::Rgb(250, 210, 50)).fg(Color::Black).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
+            Span::styled("elp ", Style::default().bg(Color::Rgb(250, 210, 50)).fg(Color::Black).add_modifier(Modifier::BOLD)),
+            Span::styled(" │ ", Style::default().fg(theme.border)),
+            // Quit button: " quit " in red background, white text, underlined 'q'
+            Span::styled(" ", Style::default().bg(Color::Rgb(255, 85, 85)).fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled("q", Style::default().bg(Color::Rgb(255, 85, 85)).fg(Color::White).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
+            Span::styled("uit ", Style::default().bg(Color::Rgb(255, 85, 85)).fg(Color::White).add_modifier(Modifier::BOLD)),
+        ])
+    };
 
     f.render_widget(Paragraph::new(title_line).block(title_block), chunks[0]);
 
@@ -1897,7 +2002,7 @@ mod tests {
     fn test_backup_database_serialization() {
         let mut db = startup::BackupDatabase::default();
         let entry = startup::BackupEntry {
-            uuid: "test-id".to_string(),
+        uuid: "test-id".to_string(),
             timestamp: "2026-06-05T20:53:11".to_string(),
             name: "Test App".to_string(),
             command: "C:\\Windows\\system32\\cmd.exe".to_string(),
@@ -1907,10 +2012,29 @@ mod tests {
         };
         db.entries.push(entry);
 
-        let json = serde_json::to_string(&db).unwrap();
-        let deserialized: startup::BackupDatabase = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.entries.len(), 1);
-        assert_eq!(deserialized.entries[0].name, "Test App");
+        let temp_dir = std::env::temp_dir().join(format!(
+            "rstartup_test_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_micros()
+        ));
+        let _ = std::fs::create_dir_all(&temp_dir);
+        let original_appdata = std::env::var("APPDATA").ok();
+        unsafe {
+            std::env::set_var("APPDATA", &temp_dir);
+        }
+
+        db.save().unwrap();
+
+        let loaded = startup::BackupDatabase::load();
+        assert_eq!(loaded.entries.len(), 1);
+        assert_eq!(loaded.entries[0].name, "Test App");
+
+        if let Some(val) = original_appdata {
+            unsafe { std::env::set_var("APPDATA", val); }
+        }
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 
 }
