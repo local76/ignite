@@ -395,6 +395,10 @@ struct App {
     selection_start: Option<(u16, u16)>,
     selection_end: Option<(u16, u16)>,
     selection_pending_copy: bool,
+
+    show_backups: bool,
+    backup_db: startup::BackupDatabase,
+    selected_backup: usize,
 }
 
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
@@ -518,6 +522,9 @@ impl App {
             selection_start: None,
             selection_end: None,
             selection_pending_copy: false,
+            show_backups: false,
+            backup_db: startup::BackupDatabase::load(),
+            selected_backup: 0,
         }
     }
 
@@ -909,7 +916,52 @@ fn main() -> io::Result<()> {
                             continue;
                         }
 
-
+                        // Backups view intercept keys
+                        if app.show_backups {
+                            match key.code {
+                                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('u') | KeyCode::Char('U') | KeyCode::Char('b') | KeyCode::Char('B') => {
+                                    app.show_backups = false;
+                                    app.set_status("Backups view closed.".to_string());
+                                }
+                                KeyCode::Up => {
+                                    if app.selected_backup > 0 {
+                                        app.selected_backup -= 1;
+                                    }
+                                }
+                                KeyCode::Down => {
+                                    if !app.backup_db.entries.is_empty() && app.selected_backup < app.backup_db.entries.len() - 1 {
+                                        app.selected_backup += 1;
+                                    }
+                                }
+                                KeyCode::Enter => {
+                                    if !app.backup_db.entries.is_empty() {
+                                        let entry = app.backup_db.entries[app.selected_backup].clone();
+                                        match startup::restore_startup_item(&entry) {
+                                            Ok(_) => {
+                                                app.backup_db.entries.remove(app.selected_backup);
+                                                let _ = app.backup_db.save();
+                                                app.startup_items = startup::scan_startup_items();
+                                                app.selected_startup = 0;
+                                                app.show_backups = false;
+                                                app.set_status(format!("Successfully restored: {}", entry.name));
+                                            }
+                                            Err(e) => {
+                                                app.set_status(format!("Error restoring: {}", e));
+                                            }
+                                        }
+                                    }
+                                }
+                                KeyCode::Delete if !app.backup_db.entries.is_empty() => {
+                                    let entry = app.backup_db.entries[app.selected_backup].clone();
+                                    app.backup_db.entries.remove(app.selected_backup);
+                                    let _ = app.backup_db.save();
+                                    app.selected_backup = 0;
+                                    app.set_status(format!("Deleted backup entry: {}", entry.name));
+                                }
+                                _ => {}
+                            }
+                            continue;
+                        }
 
                         // Standard hotkeys
                         match key.code {
@@ -979,14 +1031,23 @@ fn main() -> io::Result<()> {
                                     }
                                 }
                             }
-                            KeyCode::Delete => {
-                                if !app.startup_items.is_empty() {
-                                    let item = app.startup_items[app.selected_startup].clone();
+                            KeyCode::Char('u') | KeyCode::Char('U') | KeyCode::Char('b') | KeyCode::Char('B') => {
+                                app.backup_db = startup::BackupDatabase::load();
+                                app.show_backups = true;
+                                app.selected_backup = 0;
+                                app.set_status("Backups view active. Press Esc to close, Enter to restore, Del to delete entry.".to_string());
+                            }
+                            KeyCode::Delete if !app.startup_items.is_empty() => {
+                                let item = app.startup_items[app.selected_startup].clone();
+                                let mut db = startup::BackupDatabase::load();
+                                if let Err(e) = db.add_item(&item) {
+                                    app.set_status(format!("Failed to backup item: {}", e));
+                                } else {
                                     match startup::delete_startup_item(&item) {
                                         Ok(_) => {
                                             app.startup_items = startup::scan_startup_items();
                                             app.selected_startup = 0;
-                                            app.set_status(format!("Deleted startup item: {}", item.name));
+                                            app.set_status(format!("Deleted and backed up: {}", item.name));
                                         }
                                         Err(e) => {
                                             app.set_status(format!("Error deleting item: {}", e));
@@ -1524,6 +1585,12 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
             &theme,
         ));
         help_text.extend(format_help_row(
+            "u / b",
+            "Open Restore backups panel",
+            max_desc_width,
+            &theme,
+        ));
+        help_text.extend(format_help_row(
             "c",
             "Copy active startup application details to Windows Clipboard",
             max_desc_width,
@@ -1634,6 +1701,98 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         f.render_widget(paragraph, area);
     }
 
+    // 5.5. Restore Backups Modal
+    if app.show_backups {
+        let area = centered_rect(80, 75, size);
+        let popup_block = Block::default()
+            .title(Span::styled(
+                " Restore Deleted Startup Applications (Esc: Close, Del: Purge, Enter: Restore) ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ))
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.accent));
+
+        f.render_widget(ratatui::widgets::Clear, area);
+
+        let inner_area = popup_block.inner(area);
+        f.render_widget(popup_block, area);
+
+        if app.backup_db.entries.is_empty() {
+            let empty_text = vec![
+                Line::from(""),
+                Line::from(Span::styled(
+                    "No backups available.",
+                    Style::default().fg(theme.text_dim),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    "Deleted items will automatically be saved to backups.json.",
+                    Style::default().fg(theme.text_dim),
+                )),
+            ];
+            let p = Paragraph::new(empty_text)
+                .alignment(ratatui::layout::Alignment::Center);
+            f.render_widget(p, inner_area);
+        } else {
+            let left_inner_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(1), // Headers
+                    Constraint::Length(1), // Separator
+                    Constraint::Min(0),    // List itself
+                ])
+                .split(inner_area);
+
+            // Render headers
+            let headers_line = Line::from(vec![
+                Span::styled("   ", Style::default().fg(theme.text_dim)),
+                Span::styled(format!("{:<30} {:<28} {:<15}", "NAME", "DELETED TIMESTAMP", "LOCATION TYPE"), Style::default().fg(theme.text_dim).add_modifier(Modifier::BOLD)),
+            ]);
+            f.render_widget(Paragraph::new(headers_line), left_inner_chunks[0]);
+
+            // Render separator
+            let header_separator = Line::from(vec![
+                Span::styled("   ", Style::default().fg(theme.border)),
+                Span::styled(
+                    "─".repeat((inner_area.width as usize).saturating_sub(3)),
+                    Style::default().fg(theme.border),
+                ),
+            ]);
+            f.render_widget(Paragraph::new(header_separator), left_inner_chunks[1]);
+
+            let items_strings: Vec<String> = app.backup_db.entries.iter().map(|entry| {
+                let name_trimmed = if entry.name.len() > 28 {
+                    format!("{}...", &entry.name[..25])
+                } else {
+                    entry.name.clone()
+                };
+                let time_trimmed = if entry.timestamp.len() > 25 {
+                    &entry.timestamp[..25]
+                } else {
+                    &entry.timestamp
+                };
+                format!("{:<30} {:<28} {:<15}", name_trimmed, time_trimmed, entry.location_type)
+            }).collect();
+            let items: Vec<&str> = items_strings.iter().map(|s| s.as_str()).collect();
+
+            let accent_list = AccentList::new(
+                items,
+                app.selected_backup,
+                theme.accent,
+                theme.text_dim,
+                theme.text_main,
+                if app.glyphs.status_ok == "[OK]" {
+                    ">"
+                } else {
+                    "▶"
+                },
+            );
+            f.render_widget(accent_list, left_inner_chunks[2]);
+        }
+    }
+
     // 6. Handle Mouse Selection Highlights & Clipboard Copy
     if let (Some(start), Some(end)) = (app.selection_start, app.selection_end) {
         let buf = f.buffer_mut();
@@ -1733,5 +1892,26 @@ mod tests {
         let lines = parse_markdown_to_lines("# Test Header\n## Subheader", &theme);
         assert!(lines.len() >= 2);
     }
+
+    #[test]
+    fn test_backup_database_serialization() {
+        let mut db = startup::BackupDatabase::default();
+        let entry = startup::BackupEntry {
+            uuid: "test-id".to_string(),
+            timestamp: "2026-06-05T20:53:11".to_string(),
+            name: "Test App".to_string(),
+            command: "C:\\Windows\\system32\\cmd.exe".to_string(),
+            location_type: "Registry (User)".to_string(),
+            location_path: "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run".to_string(),
+            key_name: "TestApp".to_string(),
+        };
+        db.entries.push(entry);
+
+        let json = serde_json::to_string(&db).unwrap();
+        let deserialized: startup::BackupDatabase = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.entries.len(), 1);
+        assert_eq!(deserialized.entries[0].name, "Test App");
+    }
+
 }
 

@@ -1,14 +1,19 @@
 [package]
 name = "rsta"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
+
 
 [dependencies]
 ratatui = "0.29"
 crossterm = "0.28"
 winreg = "0.56.0"
 sysinfo = "0.30"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
 
 [build-dependencies]
 winres = "0.1"
+
 
