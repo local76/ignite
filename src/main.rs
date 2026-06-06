@@ -1266,13 +1266,18 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
 
     // Render startup applications list
     let items_strings: Vec<String> = app.startup_items.iter().map(|item| {
-        let status_str = if item.enabled { "[Enabled]" } else { "[Disabled]" };
-        let name_trimmed = if item.name.len() > 35 {
-            format!("{}...", &item.name[..32])
+        let status_str = if item.enabled { "Enabled" } else { "Disabled" };
+        let type_str = if item.location_type.to_lowercase().contains("user") {
+            "User"
+        } else {
+            "System"
+        };
+        let name_trimmed = if item.name.len() > 32 {
+            format!("{}...", &item.name[..29])
         } else {
             item.name.clone()
         };
-        format!("{:<40} {}", name_trimmed, status_str)
+        format!("{:<35} {:<15} {:<15}", name_trimmed, status_str, type_str)
     }).collect();
     let items: Vec<&str> = items_strings.iter().map(|s| s.as_str()).collect();
 
@@ -1288,7 +1293,36 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
             "▶"
         },
     );
-    f.render_widget(accent_list, left_inner);
+
+    // Layout left inner to have headers and separator
+    let left_inner_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Headers
+            Constraint::Length(1), // Separator
+            Constraint::Min(0),    // List itself
+        ])
+        .split(left_inner);
+
+    // Render headers
+    let headers_line = Line::from(vec![
+        Span::styled("   ", Style::default().fg(theme.text_dim)),
+        Span::styled(format!("{:<35} {:<15} {:<15}", "NAME", "STATUS", "TYPE"), Style::default().fg(theme.text_dim).add_modifier(Modifier::BOLD)),
+    ]);
+    f.render_widget(Paragraph::new(headers_line), left_inner_chunks[0]);
+
+    // Render separator under headers
+    let header_separator = Line::from(vec![
+        Span::styled("   ", Style::default().fg(theme.border)),
+        Span::styled(
+            "─".repeat((left_inner.width as usize).saturating_sub(3)),
+            Style::default().fg(theme.border),
+        ),
+    ]);
+    f.render_widget(Paragraph::new(header_separator), left_inner_chunks[1]);
+
+    // Render the list
+    f.render_widget(accent_list, left_inner_chunks[2]);
 
     // Bottom panel: Startup Application Details
     let right_border = theme.border;
