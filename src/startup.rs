@@ -9,6 +9,7 @@ pub struct StartupItem {
     pub location_path: String,
     pub enabled: bool,
     pub key_name: String, // Name of value in registry or file name in folder
+    pub impact: String, // "Low", "Medium", "High"
 }
 
 /// Helper to check if the binary data from StartupApproved indicates the item is enabled.
@@ -57,6 +58,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
             let enabled = crate::reg::read_binary(HKEY_CURRENT_USER, hkcu_approved_path, &name)
                 .map(|bytes| is_startup_approved_enabled(&bytes))
                 .unwrap_or(true);
+            let impact = estimate_startup_impact(&command);
             items.push(StartupItem {
                 name: name.clone(),
                 command,
@@ -64,6 +66,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                 location_path: format!("HKCU\\{}", hkcu_run_path),
                 enabled,
                 key_name: name,
+                impact,
             });
         }
     }
@@ -76,6 +79,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
             let enabled = crate::reg::read_binary(HKEY_LOCAL_MACHINE, hklm_approved_path, &name)
                 .map(|bytes| is_startup_approved_enabled(&bytes))
                 .unwrap_or(true);
+            let impact = estimate_startup_impact(&command);
             items.push(StartupItem {
                 name: name.clone(),
                 command,
@@ -83,6 +87,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                 location_path: format!("HKLM\\{}", hklm_run_path),
                 enabled,
                 key_name: name,
+                impact,
             });
         }
     }
@@ -95,6 +100,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
             let enabled = crate::reg::read_binary(HKEY_LOCAL_MACHINE, wow_approved_path, &name)
                 .map(|bytes| is_startup_approved_enabled(&bytes))
                 .unwrap_or(true);
+            let impact = estimate_startup_impact(&command);
             items.push(StartupItem {
                 name: name.clone(),
                 command,
@@ -102,6 +108,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                 location_path: format!("HKLM\\{}", wow_run_path),
                 enabled,
                 key_name: name,
+                impact,
             });
         }
     }
@@ -121,6 +128,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                         let enabled = crate::reg::read_binary(HKEY_CURRENT_USER, approved_path, filename)
                             .map(|bytes| is_startup_approved_enabled(&bytes))
                             .unwrap_or(true);
+                        let impact = estimate_startup_impact(&command);
                         items.push(StartupItem {
                             name: filename.to_string(),
                             command,
@@ -128,6 +136,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                             location_path: dir.to_string_lossy().to_string(),
                             enabled,
                             key_name: filename.to_string(),
+                            impact,
                         });
                     }
                 }
@@ -150,6 +159,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                         let enabled = crate::reg::read_binary(HKEY_LOCAL_MACHINE, approved_path, filename)
                             .map(|bytes| is_startup_approved_enabled(&bytes))
                             .unwrap_or(true);
+                        let impact = estimate_startup_impact(&command);
                         items.push(StartupItem {
                             name: filename.to_string(),
                             command,
@@ -157,6 +167,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                             location_path: dir.to_string_lossy().to_string(),
                             enabled,
                             key_name: filename.to_string(),
+                            impact,
                         });
                     }
                 }
@@ -281,4 +292,111 @@ pub fn add_startup_item(name: &str, command: &str) -> std::io::Result<()> {
     crate::reg::write_binary(HKEY_CURRENT_USER, app_path, name, &val)?;
 
     Ok(())
+}
+
+/// Helper to parse clean executable path from command line
+fn parse_exe_path(command: &str) -> Option<std::path::PathBuf> {
+    let mut cmd = command.trim();
+
+    // Strip quotes if present
+    if cmd.starts_with('"') {
+        if let Some(end_idx) = cmd[1..].find('"') {
+            cmd = &cmd[1..end_idx + 1];
+        }
+    } else {
+        // Find the first space that is not followed by an argument or is part of a path.
+        // Split by space and check prefix existence.
+        let parts: Vec<&str> = cmd.split(' ').collect();
+        let mut resolved_path = None;
+        let mut current_prefix = String::new();
+        for part in parts {
+            if !current_prefix.is_empty() {
+                current_prefix.push(' ');
+            }
+            current_prefix.push_str(part);
+            let path_test = std::path::Path::new(&current_prefix);
+            if path_test.exists() && path_test.is_file() {
+                resolved_path = Some(path_test.to_path_buf());
+                break;
+            }
+        }
+        if let Some(path) = resolved_path {
+            return Some(path);
+        }
+
+        // Fallback to splitting by space
+        if let Some(space_idx) = cmd.find(' ') {
+            cmd = &cmd[..space_idx];
+        }
+    }
+
+    // Expand environment variables
+    let mut resolved = cmd.to_string();
+    if resolved.contains('%') {
+        let mut expanded = String::new();
+        let mut parts = resolved.split('%');
+        if let Some(first) = parts.next() {
+            expanded.push_str(first);
+        }
+        while let Some(var_name) = parts.next() {
+            if let Ok(var_val) = std::env::var(var_name) {
+                expanded.push_str(&var_val);
+            } else {
+                expanded.push('%');
+                expanded.push_str(var_name);
+                expanded.push('%');
+            }
+            if let Some(rest) = parts.next() {
+                expanded.push_str(rest);
+            }
+        }
+        resolved = expanded;
+    }
+
+    let path = std::path::PathBuf::from(resolved);
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// Heuristically estimate boot performance startup impact
+pub fn estimate_startup_impact(command: &str) -> String {
+    let path_opt = parse_exe_path(command);
+    let Some(path) = path_opt else {
+        // Check for common names in command string if file path not found directly
+        let cmd_lower = command.to_lowercase();
+        if cmd_lower.contains("steam") || cmd_lower.contains("discord") || cmd_lower.contains("vesktop") || cmd_lower.contains("razer") {
+            return "High".to_string();
+        }
+        if cmd_lower.contains("tailscale") || cmd_lower.contains("synology") {
+            return "Medium".to_string();
+        }
+        return "Low".to_string();
+    };
+
+    // 1. Check file size
+    if let Ok(metadata) = std::fs::metadata(&path) {
+        let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+        if size_mb > 50.0 {
+            return "High".to_string();
+        } else if size_mb > 15.0 {
+            return "Medium".to_string();
+        }
+    }
+
+    // 2. Classify based on location/known directories
+    let path_str = path.to_string_lossy().to_lowercase();
+    if path_str.contains("steam") || path_str.contains("discord") || path_str.contains("vesktop") || path_str.contains("razer") {
+        return "High".to_string();
+    }
+    if path_str.contains("tailscale") || path_str.contains("synology") {
+        return "Medium".to_string();
+    }
+    if path_str.contains("system32") || path_str.contains("windows defender") {
+        return "Low".to_string();
+    }
+
+    "Low".to_string()
 }

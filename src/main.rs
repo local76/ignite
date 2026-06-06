@@ -233,6 +233,7 @@ fn get_diagnostic_details_text(app: &App) -> String {
         details.push_str(&format!("Location Type: {}\n", item.location_type));
         details.push_str(&format!("Location Path: {}\n", item.location_path));
         details.push_str(&format!("Config Key:    {}\n", item.key_name));
+        details.push_str(&format!("Startup Impact: {}\n", item.impact));
     }
     details
 }
@@ -683,11 +684,16 @@ fn main() -> io::Result<()> {
                 if items.is_empty() {
                     println!("No startup items found.");
                 } else {
-                    println!("{:<30} {:<10} {:<25} {}", "Name", "Status", "Location Type", "Command");
-                    println!("{}", "-".repeat(90));
+                    println!("{:<30} {:<10} {:<15} {:<12} {}", "Name", "Status", "Type", "Impact", "Command");
+                    println!("{}", "-".repeat(100));
                     for item in items {
                         let status = if item.enabled { "Enabled" } else { "Disabled" };
-                        println!("{:<30} {:<10} {:<25} {}", item.name, status, item.location_type, item.command);
+                        let type_str = if item.location_type.to_lowercase().contains("user") {
+                            "User"
+                        } else {
+                            "System"
+                        };
+                        println!("{:<30} {:<10} {:<15} {:<12} {}", item.name, status, type_str, item.impact, item.command);
                     }
                 }
                 return Ok(());
@@ -1277,7 +1283,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         } else {
             item.name.clone()
         };
-        format!("{:<35} {:<15} {:<15}", name_trimmed, status_str, type_str)
+        format!("{:<35} {:<15} {:<15} {:<15}", name_trimmed, status_str, type_str, item.impact)
     }).collect();
     let items: Vec<&str> = items_strings.iter().map(|s| s.as_str()).collect();
 
@@ -1307,7 +1313,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     // Render headers
     let headers_line = Line::from(vec![
         Span::styled("   ", Style::default().fg(theme.text_dim)),
-        Span::styled(format!("{:<35} {:<15} {:<15}", "NAME", "STATUS", "TYPE"), Style::default().fg(theme.text_dim).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{:<35} {:<15} {:<15} {:<15}", "NAME", "STATUS", "TYPE", "IMPACT"), Style::default().fg(theme.text_dim).add_modifier(Modifier::BOLD)),
     ]);
     f.render_widget(Paragraph::new(headers_line), left_inner_chunks[0]);
 
@@ -1382,6 +1388,19 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
             content_width,
             Style::default().fg(theme.text_dim),
             Style::default().fg(theme.text_main),
+        ));
+        details_lines.push(Line::from(""));
+
+        details_lines.extend(format_detail_line(
+            "Startup Impact:",
+            &item.impact,
+            content_width,
+            Style::default().fg(theme.text_dim),
+            Style::default().fg(match item.impact.as_str() {
+                "High" => Color::Rgb(255, 85, 85),
+                "Medium" => Color::Rgb(255, 215, 0),
+                _ => Color::Rgb(0, 255, 127),
+            }).add_modifier(Modifier::BOLD),
         ));
         details_lines.push(Line::from(""));
 
