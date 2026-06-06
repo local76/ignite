@@ -1073,6 +1073,78 @@ fn centered_rect(
         .split(popup_layout[1])[1]
 }
 
+fn wrap_text_aligned(text: &str, width: usize) -> Vec<String> {
+    if width == 0 {
+        return vec![text.to_string()];
+    }
+    let mut result = Vec::new();
+    let mut current_line = String::new();
+
+    for word in text.split(' ') {
+        let mut w = word;
+        while !w.is_empty() {
+            let space_left = width.saturating_sub(
+                current_line.len() + if current_line.is_empty() { 0 } else { 1 },
+            );
+            if w.len() <= space_left {
+                if !current_line.is_empty() {
+                    current_line.push(' ');
+                }
+                current_line.push_str(w);
+                break;
+            } else if space_left >= 5 || current_line.is_empty() {
+                let chunk_size = if current_line.is_empty() { width } else { space_left };
+                let (chunk, rest) = w.split_at(chunk_size.min(w.len()));
+                if !current_line.is_empty() {
+                    current_line.push(' ');
+                }
+                current_line.push_str(chunk);
+                result.push(current_line);
+                current_line = String::new();
+                w = rest;
+            } else {
+                result.push(current_line);
+                current_line = String::new();
+            }
+        }
+    }
+    if !current_line.is_empty() {
+        result.push(current_line);
+    }
+    if result.is_empty() {
+        result.push(String::new());
+    }
+    result
+}
+
+fn format_detail_line(
+    label: &str,
+    value: &str,
+    width: usize,
+    label_style: Style,
+    value_style: Style,
+) -> Vec<Line<'static>> {
+    let value_width = width.saturating_sub(15);
+    let wrapped = wrap_text_aligned(value, value_width);
+    let mut lines = Vec::new();
+
+    if let Some(first_val) = wrapped.first() {
+        lines.push(Line::from(vec![
+            Span::styled(format!("{:<15}", label), label_style),
+            Span::styled(first_val.clone(), value_style),
+        ]));
+    }
+
+    for val in wrapped.iter().skip(1) {
+        lines.push(Line::from(vec![
+            Span::styled("               ", label_style),
+            Span::styled(val.clone(), value_style),
+        ]));
+    }
+
+    lines
+}
+
 fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let size = f.area();
     let theme = get_theme(app.dark_mode, app.accent_color);
@@ -1256,6 +1328,8 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     if app.startup_items.is_empty() {
         details_lines.push(Line::from("No startup items detected."));
     } else if let Some(item) = app.startup_items.get(app.selected_startup) {
+        let content_width = right_content_layout[1].width as usize;
+
         details_lines.push(Line::from(vec![
             Span::styled("Name:          ", Style::default().fg(theme.text_dim)),
             Span::styled(&item.name, Style::default().fg(theme.text_main).add_modifier(Modifier::BOLD)),
@@ -1268,32 +1342,43 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         ]));
         details_lines.push(Line::from(""));
 
-        details_lines.push(Line::from(vec![
-            Span::styled("Location Type: ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.location_type, Style::default().fg(theme.text_main)),
-        ]));
+        details_lines.extend(format_detail_line(
+            "Location Type:",
+            &item.location_type,
+            content_width,
+            Style::default().fg(theme.text_dim),
+            Style::default().fg(theme.text_main),
+        ));
         details_lines.push(Line::from(""));
 
-        details_lines.push(Line::from(vec![
-            Span::styled("Registry Path: ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.location_path, Style::default().fg(theme.text_main)),
-        ]));
+        details_lines.extend(format_detail_line(
+            "Registry Path:",
+            &item.location_path,
+            content_width,
+            Style::default().fg(theme.text_dim),
+            Style::default().fg(theme.text_main),
+        ));
         details_lines.push(Line::from(""));
 
-        details_lines.push(Line::from(vec![
-            Span::styled("Config Key:    ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.key_name, Style::default().fg(theme.text_main)),
-        ]));
+        details_lines.extend(format_detail_line(
+            "Config Key:",
+            &item.key_name,
+            content_width,
+            Style::default().fg(theme.text_dim),
+            Style::default().fg(theme.text_main),
+        ));
         details_lines.push(Line::from(""));
 
-        details_lines.push(Line::from(vec![
-            Span::styled("Command:       ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.command, Style::default().fg(theme.text_main)),
-        ]));
+        details_lines.extend(format_detail_line(
+            "Command:",
+            &item.command,
+            content_width,
+            Style::default().fg(theme.text_dim),
+            Style::default().fg(theme.text_main),
+        ));
     }
 
     let details_p = Paragraph::new(details_lines)
-        .wrap(ratatui::widgets::Wrap { trim: true })
         .alignment(ratatui::layout::Alignment::Left);
 
     f.render_widget(details_p, right_content_layout[1]);
@@ -1313,8 +1398,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     f.render_widget(footer_block, chunks[2]);
 
     let is_default_msg = app.status_msg
-        == "Press Tab to cycle panel focus. Press Enter to interact."
-        || app.status_msg == "Typing mode active. Press ESC to stop editing.";
+        == "Use arrow keys to browse startup entries. Press Space to toggle, Delete to remove. (h for help)";
     let (text_color, status_text) = if is_default_msg {
         (theme.text_dim, app.status_msg.clone())
     } else {
