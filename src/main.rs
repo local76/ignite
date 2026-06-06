@@ -19,14 +19,12 @@ use ratatui::{
 
 mod config;
 mod logger;
-mod reg;
-mod widgets;
-mod win32;
 mod startup;
 
 use logger::log_message;
-use widgets::AccentList;
-use win32::{BorderlessConsole, ConsoleTitleGuard, SingleInstanceGuard};
+use rcommon::win32;
+use rcommon::widgets::AccentList;
+use rcommon::win32::{BorderlessConsole, ConsoleTitleGuard, SingleInstanceGuard};
 
 // ==========================================
 // 1. Theme Configuration
@@ -786,7 +784,7 @@ fn main() -> io::Result<()> {
     let mut stdout = io::stdout();
 
     // Force scalable minimal size or custom sizing
-    let _ = execute!(stdout, crossterm::terminal::SetSize(110, 38));
+    let _ = execute!(stdout, crossterm::terminal::SetSize(100, 35));
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
 
     // Enable borderless console framing immediately after size adjustment if configured

@@ -379,6 +379,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcommon"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "ratatui",
+ "sysinfo",
+ "windows",
+ "windows-sys 0.59.0",
+ "winreg",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -389,11 +401,13 @@ dependencies = [
 
 [[package]]
 name = "rsta"
-version = "0.2.0"
+version = "0.2.3"
 dependencies = [
  "crossterm",
  "ratatui",
+ "rcommon",
  "sysinfo",
+ "windows",
  "winreg",
  "winres",
 ]

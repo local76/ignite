@@ -53,9 +53,9 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
     // 1. Registry: HKCU Run Key
     let hkcu_run_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     let hkcu_approved_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-    if let Some(values) = crate::reg::list_values(HKEY_CURRENT_USER, hkcu_run_path) {
+    if let Some(values) = rcommon::reg::list_values(HKEY_CURRENT_USER, hkcu_run_path) {
         for (name, command) in values {
-            let enabled = crate::reg::read_binary(HKEY_CURRENT_USER, hkcu_approved_path, &name)
+            let enabled = rcommon::reg::read_binary(HKEY_CURRENT_USER, hkcu_approved_path, &name)
                 .map(|bytes| is_startup_approved_enabled(&bytes))
                 .unwrap_or(true);
             let impact = estimate_startup_impact(&command);
@@ -74,9 +74,9 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
     // 2. Registry: HKLM Run Key
     let hklm_run_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     let hklm_approved_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-    if let Some(values) = crate::reg::list_values(HKEY_LOCAL_MACHINE, hklm_run_path) {
+    if let Some(values) = rcommon::reg::list_values(HKEY_LOCAL_MACHINE, hklm_run_path) {
         for (name, command) in values {
-            let enabled = crate::reg::read_binary(HKEY_LOCAL_MACHINE, hklm_approved_path, &name)
+            let enabled = rcommon::reg::read_binary(HKEY_LOCAL_MACHINE, hklm_approved_path, &name)
                 .map(|bytes| is_startup_approved_enabled(&bytes))
                 .unwrap_or(true);
             let impact = estimate_startup_impact(&command);
@@ -95,9 +95,9 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
     // 3. Registry: HKLM WOW6432Node Run Key
     let wow_run_path = "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run";
     let wow_approved_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32";
-    if let Some(values) = crate::reg::list_values(HKEY_LOCAL_MACHINE, wow_run_path) {
+    if let Some(values) = rcommon::reg::list_values(HKEY_LOCAL_MACHINE, wow_run_path) {
         for (name, command) in values {
-            let enabled = crate::reg::read_binary(HKEY_LOCAL_MACHINE, wow_approved_path, &name)
+            let enabled = rcommon::reg::read_binary(HKEY_LOCAL_MACHINE, wow_approved_path, &name)
                 .map(|bytes| is_startup_approved_enabled(&bytes))
                 .unwrap_or(true);
             let impact = estimate_startup_impact(&command);
@@ -125,7 +125,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                             continue;
                         }
                         let command = path.to_string_lossy().to_string();
-                        let enabled = crate::reg::read_binary(HKEY_CURRENT_USER, approved_path, filename)
+                        let enabled = rcommon::reg::read_binary(HKEY_CURRENT_USER, approved_path, filename)
                             .map(|bytes| is_startup_approved_enabled(&bytes))
                             .unwrap_or(true);
                         let impact = estimate_startup_impact(&command);
@@ -156,7 +156,7 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                             continue;
                         }
                         let command = path.to_string_lossy().to_string();
-                        let enabled = crate::reg::read_binary(HKEY_LOCAL_MACHINE, approved_path, filename)
+                        let enabled = rcommon::reg::read_binary(HKEY_LOCAL_MACHINE, approved_path, filename)
                             .map(|bytes| is_startup_approved_enabled(&bytes))
                             .unwrap_or(true);
                         let impact = estimate_startup_impact(&command);
@@ -190,23 +190,23 @@ pub fn toggle_startup_item(item: &mut StartupItem) -> std::io::Result<()> {
     match item.location_type.as_str() {
         "Registry (User)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-            crate::reg::write_binary(HKEY_CURRENT_USER, path, &item.key_name, &val)?;
+            rcommon::reg::write_binary(HKEY_CURRENT_USER, path, &item.key_name, &val)?;
         }
         "Registry (System)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-            crate::reg::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
+            rcommon::reg::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
         }
         "Registry (System 32-bit)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32";
-            crate::reg::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
+            rcommon::reg::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
         }
         "Startup Folder (User)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder";
-            crate::reg::write_binary(HKEY_CURRENT_USER, path, &item.key_name, &val)?;
+            rcommon::reg::write_binary(HKEY_CURRENT_USER, path, &item.key_name, &val)?;
         }
         "Startup Folder (System)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder";
-            crate::reg::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
+            rcommon::reg::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
         }
         _ => {}
     }
@@ -285,11 +285,11 @@ pub fn delete_startup_item(item: &StartupItem) -> std::io::Result<()> {
 #[allow(dead_code)]
 pub fn add_startup_item(name: &str, command: &str) -> std::io::Result<()> {
     let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-    crate::reg::write_string(HKEY_CURRENT_USER, path, name, command)?;
+    rcommon::reg::write_string(HKEY_CURRENT_USER, path, name, command)?;
 
     let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
     let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-    crate::reg::write_binary(HKEY_CURRENT_USER, app_path, name, &val)?;
+    rcommon::reg::write_binary(HKEY_CURRENT_USER, app_path, name, &val)?;
 
     Ok(())
 }
@@ -586,28 +586,28 @@ pub fn restore_startup_item(entry: &BackupEntry) -> std::io::Result<()> {
     match entry.location_type.as_str() {
         "Registry (User)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-            crate::reg::write_string(winreg::enums::HKEY_CURRENT_USER, path, &entry.key_name, &entry.command)?;
+            rcommon::reg::write_string(winreg::enums::HKEY_CURRENT_USER, path, &entry.key_name, &entry.command)?;
             
             // Re-create enabled startup approved binary value
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
             let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            crate::reg::write_binary(winreg::enums::HKEY_CURRENT_USER, app_path, &entry.key_name, &val)?;
+            rcommon::reg::write_binary(winreg::enums::HKEY_CURRENT_USER, app_path, &entry.key_name, &val)?;
         }
         "Registry (System)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-            crate::reg::write_string(winreg::enums::HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
+            rcommon::reg::write_string(winreg::enums::HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
             
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
             let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            crate::reg::write_binary(winreg::enums::HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
+            rcommon::reg::write_binary(winreg::enums::HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
         }
         "Registry (System 32-bit)" => {
             let path = "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run";
-            crate::reg::write_string(winreg::enums::HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
+            rcommon::reg::write_string(winreg::enums::HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
             
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32";
             let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            crate::reg::write_binary(winreg::enums::HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
+            rcommon::reg::write_binary(winreg::enums::HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
         }
         "Startup Folder (User)" => {
             if let Some(mut dir) = get_user_startup_dir() {
