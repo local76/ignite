@@ -271,6 +271,7 @@ pub fn delete_startup_item(item: &StartupItem) -> std::io::Result<()> {
 }
 
 /// Create a new user registry startup item.
+#[allow(dead_code)]
 pub fn add_startup_item(name: &str, command: &str) -> std::io::Result<()> {
     let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     crate::reg::write_string(HKEY_CURRENT_USER, path, name, command)?;

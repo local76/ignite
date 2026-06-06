@@ -18,14 +18,12 @@ use ratatui::{
 };
 
 mod config;
-mod input;
 mod logger;
 mod reg;
 mod widgets;
 mod win32;
 mod startup;
 
-use input::TextBox;
 use logger::log_message;
 use widgets::AccentList;
 use win32::{BorderlessConsole, ConsoleTitleGuard, SingleInstanceGuard};
@@ -368,9 +366,6 @@ struct App {
     accent_color: Color,
     last_theme_check: Instant,
 
-    // Interactive Input
-    textbox: TextBox,
-
     enable_toasts: bool,
 
     // Interactive Startup Items selection
@@ -492,7 +487,7 @@ impl App {
         let networks = sysinfo::Networks::new_with_refreshed_list();
         Self {
             status_msg:
-                "Press Tab to cycle panel focus. Use arrow keys to browse startup entries. (h for help)"
+                "Use arrow keys to browse startup entries. Press Space to toggle, Delete to remove. (h for help)"
                     .to_string(),
             status_timer: None,
             focus: FocusedSection::LeftPanel,
@@ -502,7 +497,6 @@ impl App {
             dark_mode,
             accent_color,
             last_theme_check: Instant::now(),
-            textbox: TextBox::new(),
             enable_toasts: config.enable_toasts,
             selected_startup: 0,
             startup_items: startup::scan_startup_items(),
@@ -607,11 +601,7 @@ impl App {
     fn check_status_decay(&mut self) {
         if let Some(t) = self.status_timer {
             if t.elapsed() > Duration::from_secs(4) {
-                self.status_msg = if self.textbox.active {
-                    "Typing mode active. Press ESC to stop editing.".to_string()
-                } else {
-                    "Press Tab to cycle panel focus. Press Enter to interact.".to_string()
-                };
+                self.status_msg = "Use arrow keys to browse startup entries. Press Space to toggle, Delete to remove. (h for help)".to_string();
                 self.status_timer = None;
             }
         }
@@ -913,47 +903,7 @@ fn main() -> io::Result<()> {
                             continue;
                         }
 
-                        // Textbox intercept keys
-                        if app.textbox.active {
-                            match key.code {
-                                KeyCode::Esc => {
-                                    app.textbox.active = false;
-                                    app.set_status("Add Startup canceled.".to_string());
-                                }
-                                KeyCode::Enter => {
-                                    app.textbox.active = false;
-                                    let text = app.textbox.text.trim();
-                                    if !text.is_empty() {
-                                        let parts: Vec<&str> = text.splitn(2, '=').collect();
-                                        let (name, command) = if parts.len() == 2 {
-                                            (parts[0].trim().to_string(), parts[1].trim().to_string())
-                                        } else {
-                                            let cmd = parts[0].trim();
-                                            let file_name = std::path::Path::new(cmd)
-                                                .file_name()
-                                                .and_then(|f| f.to_str())
-                                                .unwrap_or(cmd);
-                                            (file_name.to_string(), cmd.to_string())
-                                        };
-                                        match startup::add_startup_item(&name, &command) {
-                                            Ok(_) => {
-                                                app.startup_items = startup::scan_startup_items();
-                                                app.selected_startup = 0;
-                                                app.set_status(format!("Added startup item: {}", name));
-                                            }
-                                            Err(e) => {
-                                                app.set_status(format!("Error adding item: {}", e));
-                                            }
-                                        }
-                                    }
-                                    app.textbox.text.clear();
-                                }
-                                other => {
-                                    app.textbox.handle_key(other);
-                                }
-                            }
-                            continue;
-                        }
+
 
                         // Standard hotkeys
                         match key.code {
@@ -1037,14 +987,6 @@ fn main() -> io::Result<()> {
                                         }
                                     }
                                 }
-                            }
-                            KeyCode::Char('a') | KeyCode::Char('A') => {
-                                app.textbox.active = true;
-                                app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
-                            }
-                            KeyCode::Enter => {
-                                app.textbox.active = true;
-                                app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
                             }
                             _ => {}
                         }
@@ -1229,31 +1171,17 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
 
     f.render_widget(Paragraph::new(title_line).block(title_block), chunks[0]);
 
-    // 2. Main Content splitting horizontally
+    // 2. Main Content splitting vertically
     let content_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(5), Constraint::Length(14)])
         .split(chunks[1]);
 
-    // Left panel: Text input box
-    let left_active = app.focus == FocusedSection::LeftPanel;
-    let left_border = if left_active {
-        if app.textbox.active {
-            Color::Rgb(0, 255, 127)
-        } else {
-            theme.border_active
-        }
-    } else {
-        theme.border
-    };
-    let left_title = if app.textbox.active {
-        " Add Startup Application "
-    } else {
-        " Startup Applications "
-    };
+    // Startup Applications Panel
+    let left_border = theme.border_active;
     let left_block = Block::default()
         .borders(Borders::ALL)
-        .title(left_title)
+        .title(" Startup Applications ")
         .title_style(
             Style::default()
                 .fg(left_border)
@@ -1264,24 +1192,15 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let left_inner = left_block.inner(content_chunks[0]);
     f.render_widget(left_block, content_chunks[0]);
 
-    let left_sub_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(5),    // List of startup items
-            Constraint::Length(1), // Separator
-            Constraint::Length(2), // Text Input area
-        ])
-        .split(left_inner);
-
-    // Render diagnostics list
+    // Render startup applications list
     let items_strings: Vec<String> = app.startup_items.iter().map(|item| {
         let status_str = if item.enabled { "[Enabled]" } else { "[Disabled]" };
-        let name_trimmed = if item.name.len() > 18 {
-            format!("{}...", &item.name[..15])
+        let name_trimmed = if item.name.len() > 35 {
+            format!("{}...", &item.name[..32])
         } else {
             item.name.clone()
         };
-        format!("{:<20} {}", name_trimmed, status_str)
+        format!("{:<40} {}", name_trimmed, status_str)
     }).collect();
     let items: Vec<&str> = items_strings.iter().map(|s| s.as_str()).collect();
 
@@ -1297,49 +1216,9 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
             "▶"
         },
     );
-    f.render_widget(accent_list, left_sub_chunks[0]);
+    f.render_widget(accent_list, left_inner);
 
-    // Render separator
-    let sep_char = if app.glyphs.status_ok == "[OK]" {
-        "-"
-    } else {
-        "─"
-    };
-    let separator_text = sep_char.repeat(left_sub_chunks[1].width as usize);
-    let sep1 = Paragraph::new(Line::from(Span::styled(
-        separator_text.clone(),
-        Style::default().fg(theme.border),
-    )));
-    f.render_widget(sep1, left_sub_chunks[1]);
-
-    // Render text input block
-    let cursor_indicator = if app.textbox.active
-        && (Instant::now().duration_since(Instant::now()).as_millis() / 500) % 2 == 0
-    {
-        "|"
-    } else {
-        " "
-    };
-    let textbox_display = format!("> {}{}", app.textbox.text, cursor_indicator);
-    let input_lines = vec![
-        Line::from(Span::styled(
-            if app.textbox.active {
-                "Type Name=Command or command path & press Enter"
-            } else {
-                "Press 'a' or Enter to add a new startup item"
-            },
-            Style::default().fg(theme.text_dim),
-        )),
-        Line::from(Span::styled(
-            textbox_display,
-            Style::default()
-                .fg(theme.text_main)
-                .add_modifier(Modifier::BOLD),
-        )),
-    ];
-    f.render_widget(Paragraph::new(input_lines), left_sub_chunks[2]);
-
-    // Right panel: Startup Application Details
+    // Bottom panel: Startup Application Details
     let right_border = theme.border;
     let right_block = Block::default()
         .borders(Borders::ALL)
@@ -1380,14 +1259,12 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         details_lines.push(Line::from(vec![
             Span::styled("Name:          ", Style::default().fg(theme.text_dim)),
             Span::styled(&item.name, Style::default().fg(theme.text_main).add_modifier(Modifier::BOLD)),
-        ]));
-        details_lines.push(Line::from(""));
-
-        let status_color = if item.enabled { Color::Rgb(0, 255, 127) } else { Color::Rgb(255, 85, 85) };
-        let status_text = if item.enabled { "Enabled" } else { "Disabled" };
-        details_lines.push(Line::from(vec![
+            Span::styled("   │   ", Style::default().fg(theme.border)),
             Span::styled("Status:        ", Style::default().fg(theme.text_dim)),
-            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                if item.enabled { "Enabled" } else { "Disabled" },
+                Style::default().fg(if item.enabled { Color::Rgb(0, 255, 127) } else { Color::Rgb(255, 85, 85) }).add_modifier(Modifier::BOLD)
+            ),
         ]));
         details_lines.push(Line::from(""));
 
@@ -1480,14 +1357,20 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         help_text.push(Line::from(""));
 
         help_text.extend(format_help_row(
-            "Tab/Shift-Tab",
-            "Cycle active panel focus",
+            "Up / Down",
+            "Browse startup entries",
             max_desc_width,
             &theme,
         ));
         help_text.extend(format_help_row(
-            "Enter",
-            "Add startup application (Left Panel) or Run optimization scan (Right Panel)",
+            "Space",
+            "Toggle enabled/disabled status of item",
+            max_desc_width,
+            &theme,
+        ));
+        help_text.extend(format_help_row(
+            "Delete",
+            "Remove selected startup item",
             max_desc_width,
             &theme,
         ));
