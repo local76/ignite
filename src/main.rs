@@ -25,6 +25,7 @@ mod reg;
 mod widgets;
 mod win32;
 mod worker;
+mod startup;
 
 use input::TextBox;
 use logger::log_message;
@@ -216,6 +217,7 @@ fn print_help() {
     println!();
     println!("Commands:");
     println!("  tui       Launch the interactive TUI dashboard (default)");
+    println!("  list      Search and list all active startup applications");
     println!("  doctor    Verify system registry, log paths, and console scaling");
     println!("  version   Print application version info");
     println!("  help      Print this help message");
@@ -224,140 +226,18 @@ fn print_help() {
 /// Collect the raw text format of the currently selected diagnostic screen for clipboard storage.
 fn get_diagnostic_details_text(app: &App) -> String {
     let mut details = String::new();
-    match app.selected_diagnostic {
-        0 => {
-            details.push_str("--- BIOS Specifications ---\n");
-            if let Some(bios) = win32::query_bios_info() {
-                details.push_str(&format!("Manufacturer: {}\n", bios.manufacturer));
-                details.push_str(&format!("Product:      {}\n", bios.product));
-                details.push_str(&format!("Model/Board:  {}\n", bios.model));
-            } else {
-                details.push_str("No BIOS information detected.\n");
-            }
-        }
-        1 => {
-            details.push_str("--- Power & Battery Life ---\n");
-            if let Some(power) = win32::query_power_status() {
-                let source = if power.ac_online {
-                    "AC Online"
-                } else {
-                    "Battery (Discharging)"
-                };
-                let pct = if power.battery_percent == 255 {
-                    "Unknown".to_string()
-                } else {
-                    format!("{}%", power.battery_percent)
-                };
-                details.push_str(&format!("Power Source:  {}\n", source));
-                details.push_str(&format!("Charge Level:  {}\n", pct));
-            } else {
-                details.push_str("No battery/power status detected.\n");
-            }
-        }
-        2 => {
-            details.push_str("--- Parent Environment ---\n");
-            let (shell, term) = win32::query_shell_and_terminal();
-            details.push_str(&format!("Active Shell:  {}\n", shell));
-            details.push_str(&format!("Terminal Host: {}\n", term));
-        }
-        3 => {
-            details.push_str("--- Monitor & Resolution ---\n");
-            let (w, h) = win32::get_system_screen_resolution();
-            let dpi = win32::get_console_window_dpi();
-            details.push_str(&format!("Screen Size:   {}x{}\n", w, h));
-            details.push_str(&format!(
-                "Console DPI:   {}% ({} DPI)\n",
-                (dpi as f32 / 96.0 * 100.0) as u32,
-                dpi
-            ));
-        }
-        4 => {
-            details.push_str("--- Active Configuration ---\n");
-            details.push_str(&format!("Theme Mode:    {}\n", app.theme_mode));
-            details.push_str(&format!("Refresh Rate:  {}ms\n", app.refresh_rate_ms));
-            let current_rate = if app.on_battery {
-                app.refresh_rate_ms * 2
-            } else {
-                app.refresh_rate_ms
-            };
-            let throttle_status = if app.on_battery {
-                " (Throttling Active)"
-            } else {
-                " (Full Speed)"
-            };
-            details.push_str(&format!(
-                "Active Tick:   {}ms{}\n",
-                current_rate, throttle_status
-            ));
-            details.push_str(&format!("Borderless:    {}\n", app.enable_borderless));
-            details.push_str(&format!("Toast Alerts:  {}\n", app.enable_toasts));
-            details.push_str(&format!("Event Log:     {}\n", app.enable_event_log));
-        }
-        5 => {
-            details.push_str("--- Top 5 CPU Processes ---\n");
-            details.push_str(&format!(
-                "{:>6}  {:<20}  {:>8}  {:>10}\n",
-                "PID", "Name", "CPU %", "Memory"
-            ));
-            for (pid, name, cpu, mem) in &app.top_processes {
-                let mem_mb = *mem as f64 / 1024.0 / 1024.0;
-                details.push_str(&format!(
-                    "{:>6}  {:<20}  {:>7.1}%  {:>8.1} MB\n",
-                    pid, name, cpu, mem_mb
-                ));
-            }
-        }
-        6 => {
-            details.push_str("--- Logical Drive Storage ---\n");
-            let drives = win32::query_disk_drives();
-            for drive in drives {
-                let total_gb = drive.total_bytes as f64 / 1024.0 / 1024.0 / 1024.0;
-                let free_gb = drive.free_bytes as f64 / 1024.0 / 1024.0 / 1024.0;
-                let used_gb = total_gb - free_gb;
-                let pct = if total_gb > 0.0 {
-                    (used_gb / total_gb) * 100.0
-                } else {
-                    0.0
-                };
-                details.push_str(&format!(
-                    "{} : {:.1}% used ({:.1} GB free / {:.1} GB total)\n",
-                    drive.path, pct, free_gb, total_gb
-                ));
-            }
-        }
-        7 => {
-            details.push_str("--- Network Adapter Metrics ---\n");
-            if let Some(ip) = win32::query_local_ip() {
-                details.push_str(&format!("Local IP Address:  {}\n", ip));
-            }
-            details.push_str(&format!(
-                "{:<20}  {:>12}  {:>12}\n",
-                "Interface", "Rx Total", "Tx Total"
-            ));
-            for (name, rx, tx) in &app.network_rates {
-                let rx_mb = *rx as f64 / 1024.0 / 1024.0;
-                let tx_mb = *tx as f64 / 1024.0 / 1024.0;
-                details.push_str(&format!(
-                    "{:<20}  {:>9.2} MB  {:>9.2} MB\n",
-                    name, rx_mb, tx_mb
-                ));
-            }
-        }
-        8 => {
-            details.push_str("--- Windows Services Status ---\n");
-            let services = vec![
-                ("wuauserv", "Windows Update"),
-                ("Spooler", "Print Spooler"),
-                ("EventLog", "Windows Event Log"),
-                ("Dhcp", "DHCP Client"),
-                ("Dnscache", "DNS Client"),
-            ];
-            for (service_id, display_name) in services {
-                let status = win32::query_windows_service_status(service_id);
-                details.push_str(&format!("{:<18} : {}\n", display_name, status));
-            }
-        }
-        _ => {}
+    if app.startup_items.is_empty() {
+        details.push_str("No startup items detected.\n");
+        return details;
+    }
+    if let Some(item) = app.startup_items.get(app.selected_startup) {
+        details.push_str("--- Startup Application Specifications ---\n");
+        details.push_str(&format!("Name:          {}\n", item.name));
+        details.push_str(&format!("Command:       {}\n", item.command));
+        details.push_str(&format!("Status:        {}\n", if item.enabled { "Enabled" } else { "Disabled" }));
+        details.push_str(&format!("Location Type: {}\n", item.location_type));
+        details.push_str(&format!("Location Path: {}\n", item.location_path));
+        details.push_str(&format!("Config Key:    {}\n", item.key_name));
     }
     details
 }
@@ -498,8 +378,9 @@ struct App {
     worker_running: bool,
     enable_toasts: bool,
 
-    // Interactive Diagnostics selection
-    selected_diagnostic: usize,
+    // Interactive Startup Items selection
+    selected_startup: usize,
+    startup_items: Vec<startup::StartupItem>,
     theme_mode: String,
     refresh_rate_ms: u32,
     enable_borderless: bool,
@@ -631,7 +512,8 @@ impl App {
             worker_progress: 0.0,
             worker_running: false,
             enable_toasts: config.enable_toasts,
-            selected_diagnostic: 0,
+            selected_startup: 0,
+            startup_items: startup::scan_startup_items(),
             theme_mode: config.theme_mode.clone(),
             refresh_rate_ms: config.refresh_rate_ms,
             enable_borderless: config.enable_borderless,
@@ -658,39 +540,32 @@ impl App {
         log_message("INFO", &format!("Status updated: {}", self.status_msg));
     }
 
-    fn select_next_diagnostic(&mut self) {
-        self.selected_diagnostic = (self.selected_diagnostic + 1) % 9;
+    fn select_next_startup(&mut self) {
+        if self.startup_items.is_empty() {
+            self.selected_startup = 0;
+            return;
+        }
+        self.selected_startup = (self.selected_startup + 1) % self.startup_items.len();
         self.set_status(format!(
             "Selected item: {}",
-            self.get_diagnostic_name(self.selected_diagnostic)
+            self.startup_items[self.selected_startup].name
         ));
     }
 
-    fn select_prev_diagnostic(&mut self) {
-        if self.selected_diagnostic == 0 {
-            self.selected_diagnostic = 8;
+    fn select_prev_startup(&mut self) {
+        if self.startup_items.is_empty() {
+            self.selected_startup = 0;
+            return;
+        }
+        if self.selected_startup == 0 {
+            self.selected_startup = self.startup_items.len() - 1;
         } else {
-            self.selected_diagnostic -= 1;
+            self.selected_startup -= 1;
         }
         self.set_status(format!(
             "Selected item: {}",
-            self.get_diagnostic_name(self.selected_diagnostic)
+            self.startup_items[self.selected_startup].name
         ));
-    }
-
-    fn get_diagnostic_name(&self, idx: usize) -> &'static str {
-        match idx {
-            0 => "System BIOS Info",
-            1 => "Power & Battery",
-            2 => "Shell & Terminal",
-            3 => "Display Details",
-            4 => "App Configuration",
-            5 => "Top Processes (CPU)",
-            6 => "Logical Drive Storage",
-            7 => "Network Adapter Metrics",
-            8 => "Windows Services Diagnostics",
-            _ => "Unknown",
-        }
     }
 
     /// Refresh process list and network adapters data dynamically.
@@ -863,6 +738,20 @@ fn main() -> io::Result<()> {
             }
             "doctor" => {
                 run_doctor();
+                return Ok(());
+            }
+            "list" => {
+                let items = startup::scan_startup_items();
+                if items.is_empty() {
+                    println!("No startup items found.");
+                } else {
+                    println!("{:<30} {:<10} {:<25} {}", "Name", "Status", "Location Type", "Command");
+                    println!("{}", "-".repeat(90));
+                    for item in items {
+                        let status = if item.enabled { "Enabled" } else { "Disabled" };
+                        println!("{:<30} {:<10} {:<25} {}", item.name, status, item.location_type, item.command);
+                    }
+                }
                 return Ok(());
             }
             "tui" => {
@@ -1082,11 +971,35 @@ fn main() -> io::Result<()> {
                             match key.code {
                                 KeyCode::Esc => {
                                     app.textbox.active = false;
-                                    app.set_status("TextBox exited.".to_string());
+                                    app.set_status("Add Startup canceled.".to_string());
                                 }
                                 KeyCode::Enter => {
                                     app.textbox.active = false;
-                                    app.set_status(format!("Saved: {}", app.textbox.text));
+                                    let text = app.textbox.text.trim();
+                                    if !text.is_empty() {
+                                        let parts: Vec<&str> = text.splitn(2, '=').collect();
+                                        let (name, command) = if parts.len() == 2 {
+                                            (parts[0].trim().to_string(), parts[1].trim().to_string())
+                                        } else {
+                                            let cmd = parts[0].trim();
+                                            let file_name = std::path::Path::new(cmd)
+                                                .file_name()
+                                                .and_then(|f| f.to_str())
+                                                .unwrap_or(cmd);
+                                            (file_name.to_string(), cmd.to_string())
+                                        };
+                                        match startup::add_startup_item(&name, &command) {
+                                            Ok(_) => {
+                                                app.startup_items = startup::scan_startup_items();
+                                                app.selected_startup = 0;
+                                                app.set_status(format!("Added startup item: {}", name));
+                                            }
+                                            Err(e) => {
+                                                app.set_status(format!("Error adding item: {}", e));
+                                            }
+                                        }
+                                    }
+                                    app.textbox.text.clear();
                                 }
                                 other => {
                                     app.textbox.handle_key(other);
@@ -1104,7 +1017,7 @@ fn main() -> io::Result<()> {
                                 let text = get_diagnostic_details_text(&app);
                                 match win32::copy_text_to_clipboard(&text) {
                                     Ok(_) => app.set_status(
-                                        "📋 Copied diagnostic details to Windows Clipboard!"
+                                        "📋 Copied startup details to Windows Clipboard!"
                                             .to_string(),
                                     ),
                                     Err(e) => {
@@ -1147,28 +1060,61 @@ fn main() -> io::Result<()> {
                                 app.set_status(format!(
                                     "Focused Section: {}",
                                     match app.focus {
-                                        FocusedSection::LeftPanel => "Left Input Panel",
+                                        FocusedSection::LeftPanel => "Left Startup Panel",
                                         FocusedSection::RightPanel => "Right Worker Panel",
                                     }
                                 ));
                             }
                             KeyCode::Up => {
                                 if app.focus == FocusedSection::LeftPanel {
-                                    app.select_prev_diagnostic();
+                                    app.select_prev_startup();
                                 }
                             }
                             KeyCode::Down => {
                                 if app.focus == FocusedSection::LeftPanel {
-                                    app.select_next_diagnostic();
+                                    app.select_next_startup();
+                                }
+                            }
+                            KeyCode::Char(' ') => {
+                                if app.focus == FocusedSection::LeftPanel && !app.startup_items.is_empty() {
+                                    let mut item = app.startup_items[app.selected_startup].clone();
+                                    match startup::toggle_startup_item(&mut item) {
+                                        Ok(_) => {
+                                            app.startup_items[app.selected_startup] = item.clone();
+                                            let state = if item.enabled { "Enabled" } else { "Disabled" };
+                                            app.set_status(format!("Toggled {}: {}", item.name, state));
+                                        }
+                                        Err(e) => {
+                                            app.set_status(format!("Error toggling item: {}", e));
+                                        }
+                                    }
+                                }
+                            }
+                            KeyCode::Delete => {
+                                if app.focus == FocusedSection::LeftPanel && !app.startup_items.is_empty() {
+                                    let item = app.startup_items[app.selected_startup].clone();
+                                    match startup::delete_startup_item(&item) {
+                                        Ok(_) => {
+                                            app.startup_items = startup::scan_startup_items();
+                                            app.selected_startup = 0;
+                                            app.set_status(format!("Deleted startup item: {}", item.name));
+                                        }
+                                        Err(e) => {
+                                            app.set_status(format!("Error deleting item: {}", e));
+                                        }
+                                    }
+                                }
+                            }
+                            KeyCode::Char('a') | KeyCode::Char('A') => {
+                                if app.focus == FocusedSection::LeftPanel {
+                                    app.textbox.active = true;
+                                    app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
                                 }
                             }
                             KeyCode::Enter => match app.focus {
                                 FocusedSection::LeftPanel => {
                                     app.textbox.active = true;
-                                    app.set_status(
-                                        "TextBox edit active. Type text, press Enter to save."
-                                            .to_string(),
-                                    );
+                                    app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
                                 }
                                 FocusedSection::RightPanel => {
                                     if app.worker_running {
@@ -1413,20 +1359,20 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         .split(left_inner);
 
     // Render diagnostics list
-    let items = vec![
-        "System BIOS Info",
-        "Power & Battery",
-        "Shell & Terminal",
-        "Display Details",
-        "App Configuration",
-        "Top Processes (CPU)",
-        "Logical Drive Storage",
-        "Network Adapter Metrics",
-        "Windows Services Diagnostics",
-    ];
+    let items_strings: Vec<String> = app.startup_items.iter().map(|item| {
+        let status_str = if item.enabled { "[Enabled]" } else { "[Disabled]" };
+        let name_trimmed = if item.name.len() > 18 {
+            format!("{}...", &item.name[..15])
+        } else {
+            item.name.clone()
+        };
+        format!("{:<20} {}", name_trimmed, status_str)
+    }).collect();
+    let items: Vec<&str> = items_strings.iter().map(|s| s.as_str()).collect();
+
     let accent_list = AccentList::new(
         items,
-        app.selected_diagnostic,
+        app.selected_startup,
         theme.accent,
         theme.text_dim,
         theme.text_main,
@@ -1453,239 +1399,44 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
 
     // Render details section
     let mut details_lines = Vec::new();
-    match app.selected_diagnostic {
-        0 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- BIOS Specifications ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            if let Some(bios) = win32::query_bios_info() {
-                details_lines.push(Line::from(format!(
-                    "  Manufacturer:  {}",
-                    bios.manufacturer
-                )));
-                details_lines.push(Line::from(format!("  Product:       {}", bios.product)));
-                details_lines.push(Line::from(format!("  Model / Board: {}", bios.model)));
-            } else {
-                details_lines.push(Line::from("  No BIOS information detected."));
-            }
-        }
-        1 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Power & Battery Life ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            if let Some(power) = win32::query_power_status() {
-                let source = if power.ac_online {
-                    "AC Online"
-                } else {
-                    "Battery (Discharging)"
-                };
-                let pct = if power.battery_percent == 255 {
-                    "Unknown".to_string()
-                } else {
-                    format!("{}%", power.battery_percent)
-                };
-                details_lines.push(Line::from(format!("  Power Source:  {}", source)));
-                details_lines.push(Line::from(format!("  Charge Level:  {}", pct)));
-            } else {
-                details_lines.push(Line::from("  No battery/power status detected."));
-            }
-        }
-        2 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Parent Environment ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            let (shell, term) = win32::query_shell_and_terminal();
-            details_lines.push(Line::from(format!("  Active Shell:  {}", shell)));
-            details_lines.push(Line::from(format!("  Terminal Host: {}", term)));
-        }
-        3 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Monitor & Resolution ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            let (w, h) = win32::get_system_screen_resolution();
-            let dpi = win32::get_console_window_dpi();
-            details_lines.push(Line::from(format!("  Screen Size:   {}x{}", w, h)));
-            details_lines.push(Line::from(format!(
-                "  Console DPI:   {}% ({} DPI)",
-                (dpi as f32 / 96.0 * 100.0) as u32,
-                dpi
-            )));
-        }
-        4 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Active Configuration ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            details_lines.push(Line::from(format!("  Theme Mode:    {}", app.theme_mode)));
-            details_lines.push(Line::from(format!(
-                "  Refresh Rate:  {}ms",
-                app.refresh_rate_ms
-            )));
-            let current_rate = if app.on_battery {
-                app.refresh_rate_ms * 2
-            } else {
-                app.refresh_rate_ms
-            };
-            let throttle_status = if app.on_battery {
-                " (Throttling Active)"
-            } else {
-                " (Full Speed)"
-            };
-            details_lines.push(Line::from(format!(
-                "  Active Tick:   {}ms{}",
-                current_rate, throttle_status
-            )));
-            details_lines.push(Line::from(format!(
-                "  Borderless:    {}",
-                app.enable_borderless
-            )));
-            details_lines.push(Line::from(format!(
-                "  Toast Alerts:  {}",
-                app.enable_toasts
-            )));
-            details_lines.push(Line::from(format!(
-                "  Event Log:     {}",
-                app.enable_event_log
-            )));
-        }
-        5 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Top 5 CPU Processes ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            details_lines.push(Line::from(format!(
-                "  {:>6}  {:<20}  {:>8}  {:>10}",
-                "PID", "Name", "CPU %", "Memory"
-            )));
-            for (pid, name, cpu, mem) in &app.top_processes {
-                let mem_mb = *mem as f64 / 1024.0 / 1024.0;
-                details_lines.push(Line::from(format!(
-                    "  {:>6}  {:<20}  {:>7.1}%  {:>8.1} MB",
-                    pid,
-                    if name.len() > 20 { &name[..17] } else { name },
-                    cpu,
-                    mem_mb
-                )));
-            }
-            if app.top_processes.is_empty() {
-                details_lines.push(Line::from("  Querying active processes..."));
-            }
-        }
-        6 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Logical Drive Storage ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            let drives = win32::query_disk_drives();
-            for drive in drives {
-                let total_gb = drive.total_bytes as f64 / 1024.0 / 1024.0 / 1024.0;
-                let free_gb = drive.free_bytes as f64 / 1024.0 / 1024.0 / 1024.0;
-                let used_gb = total_gb - free_gb;
-                let pct = if total_gb > 0.0 {
-                    (used_gb / total_gb) * 100.0
-                } else {
-                    0.0
-                };
+    if app.startup_items.is_empty() {
+        details_lines.push(Line::from("  No startup items detected."));
+    } else if let Some(item) = app.startup_items.get(app.selected_startup) {
+        details_lines.push(Line::from(Span::styled(
+            "--- Startup Application Details ---",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        )));
+        details_lines.push(Line::from(""));
+        details_lines.push(Line::from(vec![
+            Span::styled("  Name:          ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.name, Style::default().fg(theme.text_main).add_modifier(Modifier::BOLD)),
+        ]));
+        details_lines.push(Line::from(vec![
+            Span::styled("  Command:       ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.command, Style::default().fg(theme.text_main)),
+        ]));
 
-                let bar_width = 15;
-                let filled = ((pct / 100.0) * bar_width as f64).round() as usize;
-                let bar: String = std::iter::repeat('■')
-                    .take(filled)
-                    .chain(std::iter::repeat('░').take(bar_width - filled))
-                    .collect();
+        let status_color = if item.enabled { Color::Rgb(0, 255, 127) } else { Color::Rgb(255, 85, 85) };
+        let status_text = if item.enabled { "Enabled" } else { "Disabled" };
+        details_lines.push(Line::from(vec![
+            Span::styled("  Status:        ", Style::default().fg(theme.text_dim)),
+            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
+        ]));
 
-                details_lines.push(Line::from(format!(
-                    "  {:<3} [{}] {:>5.1}% ({:.1} GB / {:.1} GB free)",
-                    drive.path, bar, pct, free_gb, total_gb
-                )));
-            }
-            if win32::query_disk_drives().is_empty() {
-                details_lines.push(Line::from("  No active storage drives found."));
-            }
-        }
-        7 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Network Adapter Metrics ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            if let Some(ip) = win32::query_local_ip() {
-                details_lines.push(Line::from(format!("  Local IP Address:  {}", ip)));
-            } else {
-                details_lines.push(Line::from("  Local IP Address:  Not Connected"));
-            }
-            details_lines.push(Line::from(""));
-            details_lines.push(Line::from(format!(
-                "  {:<20}  {:>12}  {:>12}",
-                "Interface", "Rx Total", "Tx Total"
-            )));
-            for (name, rx, tx) in &app.network_rates {
-                let rx_mb = *rx as f64 / 1024.0 / 1024.0;
-                let tx_mb = *tx as f64 / 1024.0 / 1024.0;
-                details_lines.push(Line::from(format!(
-                    "  {:<20}  {:>9.2} MB  {:>9.2} MB",
-                    if name.len() > 20 { &name[..17] } else { name },
-                    rx_mb,
-                    tx_mb
-                )));
-            }
-            if app.network_rates.is_empty() {
-                details_lines.push(Line::from("  Scanning active network adapters..."));
-            }
-        }
-        8 => {
-            details_lines.push(Line::from(Span::styled(
-                "--- Windows Services Status ---",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            )));
-            let services = vec![
-                ("wuauserv", "Windows Update"),
-                ("Spooler", "Print Spooler"),
-                ("EventLog", "Windows Event Log"),
-                ("Dhcp", "DHCP Client"),
-                ("Dnscache", "DNS Client"),
-            ];
-            for (service_id, display_name) in services {
-                let status = win32::query_windows_service_status(service_id);
-                let color = match status.as_str() {
-                    "RUNNING" => Color::Rgb(0, 255, 127),
-                    "STOPPED" => Color::Rgb(255, 85, 85),
-                    _ => theme.text_dim,
-                };
-                details_lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("  {:<18} : ", display_name),
-                        Style::default().fg(theme.text_main),
-                    ),
-                    Span::styled(
-                        status,
-                        Style::default().fg(color).add_modifier(Modifier::BOLD),
-                    ),
-                ]));
-            }
-        }
-        _ => {}
+        details_lines.push(Line::from(vec![
+            Span::styled("  Location Type: ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.location_type, Style::default().fg(theme.text_main)),
+        ]));
+        details_lines.push(Line::from(vec![
+            Span::styled("  Registry Path: ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.location_path, Style::default().fg(theme.text_main)),
+        ]));
+        details_lines.push(Line::from(vec![
+            Span::styled("  Config Key:    ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.key_name, Style::default().fg(theme.text_main)),
+        ]));
     }
     f.render_widget(Paragraph::new(details_lines), left_sub_chunks[2]);
 

@@ -45,3 +45,38 @@ pub fn write_bool_str(hive: winreg::HKEY, path: &str, key: &str, val: bool) -> i
     write_string(hive, path, key, str_val)
 }
 
+/// List all key-value string pairs in a registry subkey.
+pub fn list_values(hive: winreg::HKEY, path: &str) -> Option<Vec<(String, String)>> {
+    let root = RegKey::predef(hive);
+    let subkey = root.open_subkey_with_flags(path, KEY_READ).ok()?;
+    let mut values = Vec::new();
+    for x in subkey.enum_values() {
+        if let Ok((name, _)) = x {
+            if let Ok(val) = subkey.get_value::<String, _>(&name) {
+                values.push((name, val));
+            }
+        }
+    }
+    Some(values)
+}
+
+/// Read a binary value from the registry.
+pub fn read_binary(hive: winreg::HKEY, path: &str, key: &str) -> Option<Vec<u8>> {
+    let root = RegKey::predef(hive);
+    let subkey = root.open_subkey_with_flags(path, KEY_READ).ok()?;
+    let value = subkey.get_raw_value(key).ok()?;
+    Some(value.bytes.to_vec())
+}
+
+/// Write a binary value to the registry.
+pub fn write_binary(hive: winreg::HKEY, path: &str, key: &str, val: &[u8]) -> io::Result<()> {
+    let root = RegKey::predef(hive);
+    let (subkey, _) = root.create_subkey(path)?;
+    let reg_val = winreg::RegValue {
+        vtype: winreg::enums::REG_BINARY,
+        bytes: std::borrow::Cow::Borrowed(val),
+    };
+    subkey.set_raw_value(key, &reg_val)
+}
+
+
