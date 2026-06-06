@@ -497,7 +497,7 @@ impl App {
         let networks = sysinfo::Networks::new_with_refreshed_list();
         Self {
             status_msg:
-                "Press Tab to cycle panel focus. Use arrow keys to browse diagnostics. (h for help)"
+                "Press Tab to cycle panel focus. Use arrow keys to browse startup entries. (h for help)"
                     .to_string(),
             status_timer: None,
             focus: FocusedSection::LeftPanel,
@@ -682,14 +682,14 @@ impl App {
                 match event {
                     WorkerEvent::Progress(progress) => {
                         self.worker_progress = progress;
-                        status_update = Some(format!("Task progress: {:.0}%", progress * 100.0));
+                        status_update = Some(format!("Optimization progress: {:.0}%", progress * 100.0));
                     }
                     WorkerEvent::Success(message) => {
                         self.worker_progress = 1.0;
                         self.worker_running = false;
                         completed = true;
                         if self.enable_toasts {
-                            win32::show_toast_notification("rsta Task Completed", &message);
+                            win32::show_toast_notification("rStartup Optimization Completed", &message);
                         }
                         status_update = Some(message);
                     }
@@ -697,9 +697,9 @@ impl App {
                         self.worker_running = false;
                         completed = true;
                         if self.enable_toasts {
-                            win32::show_toast_notification("rsta Task Failed", &err);
+                            win32::show_toast_notification("rStartup Optimization Failed", &err);
                         }
-                        status_update = Some(format!("Task failed: {}", err));
+                        status_update = Some(format!("Optimization failed: {}", err));
                     }
                 }
             }
@@ -1060,8 +1060,8 @@ fn main() -> io::Result<()> {
                                 app.set_status(format!(
                                     "Focused Section: {}",
                                     match app.focus {
-                                        FocusedSection::LeftPanel => "Left Startup Panel",
-                                        FocusedSection::RightPanel => "Right Worker Panel",
+                                        FocusedSection::LeftPanel => "Startup Applications",
+                                        FocusedSection::RightPanel => "Startup Optimizer",
                                     }
                                 ));
                             }
@@ -1330,9 +1330,9 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         theme.border
     };
     let left_title = if app.textbox.active {
-        " Left Input Panel (EDITING) "
+        " Add Startup Application "
     } else {
-        " Left Input Panel "
+        " Startup Applications "
     };
     let left_block = Block::default()
         .borders(Borders::ALL)
@@ -1483,7 +1483,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     };
     let right_block = Block::default()
         .borders(Borders::ALL)
-        .title(" Right Worker Panel ")
+        .title(" Startup Optimizer ")
         .title_style(
             Style::default()
                 .fg(right_border)
@@ -1508,7 +1508,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
 
     f.render_widget(
         Paragraph::new(Line::from(
-            "Press Enter to execute background worker thread:",
+            "Press Enter to execute startup optimization scan:",
         )),
         right_chunks[0],
     );
@@ -1607,7 +1607,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         ));
         help_text.extend(format_help_row(
             "Enter",
-            "Edit textbox (Left Panel) or Run worker (Right Panel)",
+            "Add startup application (Left Panel) or Run optimization scan (Right Panel)",
             max_desc_width,
             &theme,
         ));
@@ -1625,7 +1625,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         ));
         help_text.extend(format_help_row(
             "c",
-            "Copy active diagnostic details to Windows Clipboard",
+            "Copy active startup application details to Windows Clipboard",
             max_desc_width,
             &theme,
         ));

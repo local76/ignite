@@ -27,7 +27,7 @@ pub fn spawn_background_task(tx: Sender<WorkerEvent>) {
 
         thread::sleep(Duration::from_millis(100));
         let _ = tx.send(WorkerEvent::Success(
-            "Background task completed successfully!".to_string(),
+            "Startup optimization scan completed successfully!".to_string(),
         ));
     });
 }
