@@ -188,13 +188,13 @@ fn parse_markdown_to_lines(content: &str, theme: &ThemeColors) -> Vec<Line<'stat
 // 2. CLI Command Handling & Diagnostics
 // ==========================================
 
-pub const TEMPLATE_LOGO: &str = r"
-         ______                     __      __      
-   _____/_  __/__  ____ ___  ____  / /___ _/ /____  
-  / ___/ / / / _ \/ __ `__ \/ __ \/ / __ `/ __/ _ \  
- / /    / / /  __/ / / / / / /_/ / / /_/ / /_/  __/  
-/_/    /_/  \___/_/ /_/ /_/ .___/_/\__,_/\__/\___/  
-                         /_/                        
+pub const RSTARTUP_LOGO: &str = r"
+         _____ __                __               
+   _____/ ___// /_____ _________/ /___  ______    
+  / ___/\__ \/ __/ __ `/ ___/ __  / / / / __ \   
+ / /   ___/ / /_/ /_/ / /  / /_/ / /_/ / /_/ /   
+/_/   /____/\__/\__,_/_/   \__,_/\__,_/ .___/    
+                                     /_/         
 ";
 
 const README_CONTENT: &str = include_str!("../README.md");
@@ -206,9 +206,9 @@ const SECURITY_CONTENT: &str = include_str!("../SECURITY.md");
 const CONTRIBUTING_CONTENT: &str = include_str!("../CONTRIBUTING.md");
 
 fn print_help() {
-    println!("{}", TEMPLATE_LOGO);
+    println!("{}", RSTARTUP_LOGO);
     println!(
-        "rsta — Rust TUI Application Template (v{})",
+        "rsta — Rust Startup Manager (v{})",
         env!("CARGO_PKG_VERSION")
     );
     println!("Usage:");
@@ -363,7 +363,7 @@ fn get_diagnostic_details_text(app: &App) -> String {
 }
 
 fn run_doctor() {
-    println!("{}", TEMPLATE_LOGO);
+    println!("{}", RSTARTUP_LOGO);
     println!("rStartup Doctor — Diagnostic Report");
     println!("====================================");
 
@@ -1333,7 +1333,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(theme.border))
         .title(Span::styled(
-            " Rust Application Template ",
+            " Rust Startup Manager ",
             Style::default()
                 .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
