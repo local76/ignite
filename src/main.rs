@@ -1,6 +1,5 @@
 use std::{
     io,
-    sync::mpsc::{Receiver, channel},
     time::{Duration, Instant},
 };
 
@@ -24,14 +23,12 @@ mod logger;
 mod reg;
 mod widgets;
 mod win32;
-mod worker;
 mod startup;
 
 use input::TextBox;
 use logger::log_message;
-use widgets::{AccentGauge, AccentList};
+use widgets::AccentList;
 use win32::{BorderlessConsole, ConsoleTitleGuard, SingleInstanceGuard};
-use worker::WorkerEvent;
 
 // ==========================================
 // 1. Theme Configuration
@@ -350,12 +347,14 @@ fn run_doctor() {
 // 3. Application State & Layout Panels
 // ==========================================
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum FocusedSection {
     LeftPanel,
     RightPanel,
 }
 
+#[allow(dead_code)]
 struct App {
     status_msg: String,
     status_timer: Option<Instant>,
@@ -372,10 +371,6 @@ struct App {
     // Interactive Input
     textbox: TextBox,
 
-    // Background worker state
-    worker_rx: Option<Receiver<WorkerEvent>>,
-    worker_progress: f64,
-    worker_running: bool,
     enable_toasts: bool,
 
     // Interactive Startup Items selection
@@ -508,9 +503,6 @@ impl App {
             accent_color,
             last_theme_check: Instant::now(),
             textbox: TextBox::new(),
-            worker_rx: None,
-            worker_progress: 0.0,
-            worker_running: false,
             enable_toasts: config.enable_toasts,
             selected_startup: 0,
             startup_items: startup::scan_startup_items(),
@@ -672,51 +664,7 @@ impl App {
         }
     }
 
-    /// Poll for asynchronous background task events.
-    fn poll_worker_channel(&mut self) {
-        let mut completed = false;
-        let mut status_update = None;
 
-        if let Some(ref rx) = self.worker_rx {
-            while let Ok(event) = rx.try_recv() {
-                match event {
-                    WorkerEvent::Progress(progress) => {
-                        self.worker_progress = progress;
-                        status_update = Some(format!("Optimization progress: {:.0}%", progress * 100.0));
-                    }
-                    WorkerEvent::Success(message) => {
-                        self.worker_progress = 1.0;
-                        self.worker_running = false;
-                        completed = true;
-                        if self.enable_toasts {
-                            win32::show_toast_notification("rStartup Optimization Completed", &message);
-                        }
-                        status_update = Some(message);
-                    }
-                    WorkerEvent::Error(err) => {
-                        self.worker_running = false;
-                        completed = true;
-                        if self.enable_toasts {
-                            win32::show_toast_notification("rStartup Optimization Failed", &err);
-                        }
-                        status_update = Some(format!("Optimization failed: {}", err));
-                    }
-                }
-            }
-        }
-
-        if let Some(msg) = status_update {
-            if completed {
-                self.set_status(msg);
-            } else {
-                self.status_msg = msg;
-            }
-        }
-
-        if completed {
-            self.worker_rx = None;
-        }
-    }
 }
 
 // ==========================================
@@ -852,7 +800,6 @@ fn main() -> io::Result<()> {
         app.sync_theme_if_needed(&config);
         app.sync_power_status_if_needed();
         app.refresh_system_metrics();
-        app.poll_worker_channel();
 
         terminal.draw(|f| draw_ui(f, &mut app))?;
 
@@ -1053,30 +1000,16 @@ fn main() -> io::Result<()> {
                                 );
                             }
                             KeyCode::Tab => {
-                                app.focus = match app.focus {
-                                    FocusedSection::LeftPanel => FocusedSection::RightPanel,
-                                    FocusedSection::RightPanel => FocusedSection::LeftPanel,
-                                };
-                                app.set_status(format!(
-                                    "Focused Section: {}",
-                                    match app.focus {
-                                        FocusedSection::LeftPanel => "Startup Applications",
-                                        FocusedSection::RightPanel => "Startup Optimizer",
-                                    }
-                                ));
+                                // Tab focus cycling is disabled since Right Panel is purely informational details
                             }
                             KeyCode::Up => {
-                                if app.focus == FocusedSection::LeftPanel {
-                                    app.select_prev_startup();
-                                }
+                                app.select_prev_startup();
                             }
                             KeyCode::Down => {
-                                if app.focus == FocusedSection::LeftPanel {
-                                    app.select_next_startup();
-                                }
+                                app.select_next_startup();
                             }
                             KeyCode::Char(' ') => {
-                                if app.focus == FocusedSection::LeftPanel && !app.startup_items.is_empty() {
+                                if !app.startup_items.is_empty() {
                                     let mut item = app.startup_items[app.selected_startup].clone();
                                     match startup::toggle_startup_item(&mut item) {
                                         Ok(_) => {
@@ -1091,7 +1024,7 @@ fn main() -> io::Result<()> {
                                 }
                             }
                             KeyCode::Delete => {
-                                if app.focus == FocusedSection::LeftPanel && !app.startup_items.is_empty() {
+                                if !app.startup_items.is_empty() {
                                     let item = app.startup_items[app.selected_startup].clone();
                                     match startup::delete_startup_item(&item) {
                                         Ok(_) => {
@@ -1106,29 +1039,13 @@ fn main() -> io::Result<()> {
                                 }
                             }
                             KeyCode::Char('a') | KeyCode::Char('A') => {
-                                if app.focus == FocusedSection::LeftPanel {
-                                    app.textbox.active = true;
-                                    app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
-                                }
+                                app.textbox.active = true;
+                                app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
                             }
-                            KeyCode::Enter => match app.focus {
-                                FocusedSection::LeftPanel => {
-                                    app.textbox.active = true;
-                                    app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
-                                }
-                                FocusedSection::RightPanel => {
-                                    if app.worker_running {
-                                        app.set_status("A task is already running.".to_string());
-                                    } else {
-                                        let (tx, rx) = channel();
-                                        app.worker_rx = Some(rx);
-                                        app.worker_progress = 0.0;
-                                        app.worker_running = true;
-                                        app.set_status("Spawning background thread...".to_string());
-                                        worker::spawn_background_task(tx);
-                                    }
-                                }
-                            },
+                            KeyCode::Enter => {
+                                app.textbox.active = true;
+                                app.set_status("Add Startup: Type Name=Command or command path, press Enter".to_string());
+                            }
                             _ => {}
                         }
                     }
@@ -1350,9 +1267,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let left_sub_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(9), // List of 9 items
-            Constraint::Length(1), // Separator
-            Constraint::Min(6),    // Details section
+            Constraint::Min(5),    // List of startup items
             Constraint::Length(1), // Separator
             Constraint::Length(2), // Text Input area
         ])
@@ -1384,7 +1299,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     );
     f.render_widget(accent_list, left_sub_chunks[0]);
 
-    // Render first separator
+    // Render separator
     let sep_char = if app.glyphs.status_ok == "[OK]" {
         "-"
     } else {
@@ -1396,56 +1311,6 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         Style::default().fg(theme.border),
     )));
     f.render_widget(sep1, left_sub_chunks[1]);
-
-    // Render details section
-    let mut details_lines = Vec::new();
-    if app.startup_items.is_empty() {
-        details_lines.push(Line::from("  No startup items detected."));
-    } else if let Some(item) = app.startup_items.get(app.selected_startup) {
-        details_lines.push(Line::from(Span::styled(
-            "--- Startup Application Details ---",
-            Style::default()
-                .fg(theme.accent)
-                .add_modifier(Modifier::BOLD),
-        )));
-        details_lines.push(Line::from(""));
-        details_lines.push(Line::from(vec![
-            Span::styled("  Name:          ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.name, Style::default().fg(theme.text_main).add_modifier(Modifier::BOLD)),
-        ]));
-        details_lines.push(Line::from(vec![
-            Span::styled("  Command:       ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.command, Style::default().fg(theme.text_main)),
-        ]));
-
-        let status_color = if item.enabled { Color::Rgb(0, 255, 127) } else { Color::Rgb(255, 85, 85) };
-        let status_text = if item.enabled { "Enabled" } else { "Disabled" };
-        details_lines.push(Line::from(vec![
-            Span::styled("  Status:        ", Style::default().fg(theme.text_dim)),
-            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
-        ]));
-
-        details_lines.push(Line::from(vec![
-            Span::styled("  Location Type: ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.location_type, Style::default().fg(theme.text_main)),
-        ]));
-        details_lines.push(Line::from(vec![
-            Span::styled("  Registry Path: ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.location_path, Style::default().fg(theme.text_main)),
-        ]));
-        details_lines.push(Line::from(vec![
-            Span::styled("  Config Key:    ", Style::default().fg(theme.text_dim)),
-            Span::styled(&item.key_name, Style::default().fg(theme.text_main)),
-        ]));
-    }
-    f.render_widget(Paragraph::new(details_lines), left_sub_chunks[2]);
-
-    // Render second separator
-    let sep2 = Paragraph::new(Line::from(Span::styled(
-        separator_text,
-        Style::default().fg(theme.border),
-    )));
-    f.render_widget(sep2, left_sub_chunks[3]);
 
     // Render text input block
     let cursor_indicator = if app.textbox.active
@@ -1459,9 +1324,9 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let input_lines = vec![
         Line::from(Span::styled(
             if app.textbox.active {
-                "Type value & press Enter"
+                "Type Name=Command or command path & press Enter"
             } else {
-                "Press Enter to edit config title override"
+                "Press 'a' or Enter to add a new startup item"
             },
             Style::default().fg(theme.text_dim),
         )),
@@ -1472,21 +1337,16 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         )),
     ];
-    f.render_widget(Paragraph::new(input_lines), left_sub_chunks[4]);
+    f.render_widget(Paragraph::new(input_lines), left_sub_chunks[2]);
 
-    // Right panel: Async Worker progress
-    let right_active = app.focus == FocusedSection::RightPanel;
-    let right_border = if right_active {
-        theme.border_active
-    } else {
-        theme.border
-    };
+    // Right panel: Startup Application Details
+    let right_border = theme.border;
     let right_block = Block::default()
         .borders(Borders::ALL)
-        .title(" Startup Optimizer ")
+        .title(" Startup Application Details ")
         .title_style(
             Style::default()
-                .fg(right_border)
+                .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         )
         .border_style(Style::default().fg(right_border));
@@ -1494,52 +1354,72 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
     let right_inner = right_block.inner(content_chunks[1]);
     f.render_widget(right_block, content_chunks[1]);
 
-    let right_chunks = Layout::default()
+    // Margins inside right box for high premium feel
+    let right_inner_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1), // Instructions
-            Constraint::Length(2), // Spacer
-            Constraint::Length(1), // Status
-            Constraint::Length(2), // Spacer
-            Constraint::Length(1), // Progress bar/gauge (1 line height)
-            Constraint::Min(2),
+            Constraint::Length(1), // Top margin
+            Constraint::Min(0),    // Content
+            Constraint::Length(1), // Bottom margin
         ])
         .split(right_inner);
 
-    f.render_widget(
-        Paragraph::new(Line::from(
-            "Press Enter to execute startup optimization scan:",
-        )),
-        right_chunks[0],
-    );
+    let right_content_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(2), // Left margin
+            Constraint::Min(0),    // Content
+            Constraint::Length(2), // Right margin
+        ])
+        .split(right_inner_chunks[1]);
 
-    if app.worker_running {
-        let status_p = Paragraph::new(Line::from(vec![
-            Span::styled("  Status:  ", Style::default().fg(theme.text_dim)),
-            Span::styled(
-                "Running Task...",
-                Style::default()
-                    .fg(theme.accent)
-                    .add_modifier(Modifier::BOLD),
-            ),
+    let mut details_lines = Vec::new();
+    if app.startup_items.is_empty() {
+        details_lines.push(Line::from("No startup items detected."));
+    } else if let Some(item) = app.startup_items.get(app.selected_startup) {
+        details_lines.push(Line::from(vec![
+            Span::styled("Name:          ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.name, Style::default().fg(theme.text_main).add_modifier(Modifier::BOLD)),
         ]));
-        f.render_widget(status_p, right_chunks[2]);
+        details_lines.push(Line::from(""));
 
-        let gauge = AccentGauge::new(
-            app.worker_progress,
-            "Processing",
-            theme.accent,
-            theme.border,
-            app.glyphs.status_ok != "[OK]",
-        );
-        f.render_widget(gauge, right_chunks[4]);
-    } else {
-        let status_p = Paragraph::new(Line::from(vec![
-            Span::styled("  Status:  ", Style::default().fg(theme.text_dim)),
-            Span::styled("Idle", Style::default().fg(theme.text_main)),
+        let status_color = if item.enabled { Color::Rgb(0, 255, 127) } else { Color::Rgb(255, 85, 85) };
+        let status_text = if item.enabled { "Enabled" } else { "Disabled" };
+        details_lines.push(Line::from(vec![
+            Span::styled("Status:        ", Style::default().fg(theme.text_dim)),
+            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
         ]));
-        f.render_widget(status_p, right_chunks[2]);
+        details_lines.push(Line::from(""));
+
+        details_lines.push(Line::from(vec![
+            Span::styled("Location Type: ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.location_type, Style::default().fg(theme.text_main)),
+        ]));
+        details_lines.push(Line::from(""));
+
+        details_lines.push(Line::from(vec![
+            Span::styled("Registry Path: ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.location_path, Style::default().fg(theme.text_main)),
+        ]));
+        details_lines.push(Line::from(""));
+
+        details_lines.push(Line::from(vec![
+            Span::styled("Config Key:    ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.key_name, Style::default().fg(theme.text_main)),
+        ]));
+        details_lines.push(Line::from(""));
+
+        details_lines.push(Line::from(vec![
+            Span::styled("Command:       ", Style::default().fg(theme.text_dim)),
+            Span::styled(&item.command, Style::default().fg(theme.text_main)),
+        ]));
     }
+
+    let details_p = Paragraph::new(details_lines)
+        .wrap(ratatui::widgets::Wrap { trim: true })
+        .alignment(ratatui::layout::Alignment::Left);
+
+    f.render_widget(details_p, right_content_layout[1]);
 
     // 3. Status Bar Footer
     let footer_block = Block::default()

@@ -6,6 +6,7 @@ use ratatui::{
 };
 
 /// A custom progress gauge styled with the system DWM accent color.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AccentGauge {
     pub progress: f64, // 0.0 to 1.0
@@ -15,6 +16,7 @@ pub struct AccentGauge {
     pub use_unicode: bool,
 }
 
+#[allow(dead_code)]
 impl AccentGauge {
     pub fn new(
         progress: f64,
