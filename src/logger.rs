@@ -18,7 +18,7 @@ pub fn is_event_log_enabled() -> bool {
 pub fn get_appdata_log_path() -> Option<PathBuf> {
     std::env::var("APPDATA").ok().map(|appdata| {
         std::path::PathBuf::from(appdata)
-            .join("rStartup")
+            .join("rStart")
             .join("log.txt")
     })
 }
@@ -49,7 +49,7 @@ pub fn log_message(level: &str, msg: &str) {
             _ => 0x0004,                 // EVENTLOG_INFORMATION_TYPE
         };
         // Write the event using the native win32 module function
-        rcommon::win32::log_windows_event("rsta", event_type, 1000, msg);
+        rcommon::win32::log_windows_event("rstart", event_type, 1000, msg);
     }
 }
 

@@ -1,26 +1,30 @@
 [package]
-name = "rsta"
-version = "0.2.3"
+name = "rstart"
+version = "0.2.4"
 edition = "2024"
-
 
 [dependencies]
 ratatui = "0.29"
 crossterm = "0.28"
-winreg = "0.56.0"
 sysinfo = "0.30"
+rcommon = { git = "https://github.com/local76/rCommon.git", branch = "main" }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56.0"
 windows = { version = "0.52.0", features = [
     "Data_Xml_Dom",
     "UI_Notifications",
 ] }
-rcommon = { git = "https://github.com/tourian-dynamics/rCommon.git", branch = "main" }
 
-[build-dependencies]
+[target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
-# To build locally before pushing rCommon to GitHub, uncomment:
-# [patch."https://github.com/tourian-dynamics/rCommon.git"]
-# rcommon = { path = "../rCommon" }
+[package.metadata.generate-rpm]
+auto-req = "no"
+assets = [
+    { source = "target/x86_64-unknown-linux-musl/release/rstart", dest = "/usr/bin/rstart", mode = "755" }
+]
+
 
 
 

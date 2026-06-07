@@ -202,11 +202,11 @@ const CONTRIBUTING_CONTENT: &str = include_str!("../CONTRIBUTING.md");
 fn print_help() {
     println!("{}", RSTARTUP_LOGO);
     println!(
-        "rsta — Rust Startup Manager (v{})",
+        "rstart — Rust Startup Manager (v{})",
         env!("CARGO_PKG_VERSION")
     );
     println!("Usage:");
-    println!("  rsta.exe [command]");
+    println!("  rstart.exe [command]");
     println!();
     println!("Commands:");
     println!("  tui       Launch the interactive TUI dashboard (default)");
@@ -238,7 +238,7 @@ fn get_diagnostic_details_text(app: &App) -> String {
 
 fn run_doctor() {
     println!("{}", RSTARTUP_LOGO);
-    println!("rStartup Doctor — Diagnostic Report");
+    println!("rStart Doctor — Diagnostic Report");
     println!("====================================");
 
     // 1. Check OS Version
@@ -280,7 +280,7 @@ fn run_doctor() {
 
     // 3.5 Check Clipboard Access
     print!("Windows Clipboard:        ");
-    match win32::copy_text_to_clipboard("rStartup Diagnostic Test Connection") {
+    match win32::copy_text_to_clipboard("rStart Diagnostic Test Connection") {
         Ok(_) => println!("OK (Writable)"),
         Err(e) => println!("FAILED (Error: {})", e),
     }
@@ -677,13 +677,20 @@ impl App {
 // 4. Main Entrypoint & Render Loop
 // ==========================================
 
+#[cfg(windows)]
+unsafe extern "system" {
+    fn GetConsoleWindow() -> *mut std::ffi::c_void;
+    fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+    fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+}
+
 fn main() -> io::Result<()> {
     // Parse CLI arguments
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {
         match args[1].as_str() {
             "version" | "--version" | "-v" => {
-                println!("rsta v{}", env!("CARGO_PKG_VERSION"));
+                println!("rstart v{}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
             "help" | "--help" | "-h" => {
@@ -732,6 +739,17 @@ fn main() -> io::Result<()> {
     let config = config::AppConfig::load();
     win32::relaunch_in_conhost_if_needed();
 
+    #[cfg(windows)]
+    let hwnd = unsafe {
+        let h = GetConsoleWindow();
+        if !h.is_null() {
+            ShowWindow(h, 0); // SW_HIDE = 0
+            Some(h)
+        } else {
+            None
+        }
+    };
+
     // Initialize logging switch
     logger::set_event_log_enabled(config.enable_event_log);
     log_message(
@@ -778,7 +796,7 @@ fn main() -> io::Result<()> {
     };
 
     // Set console tab title and clean up on exit
-    let _title_guard = ConsoleTitleGuard::new("rSta");
+    let _title_guard = ConsoleTitleGuard::new("rStart");
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -799,6 +817,14 @@ fn main() -> io::Result<()> {
 
     if _borderless.is_none() {
         win32::center_console_window();
+    }
+
+    #[cfg(windows)]
+    if let Some(h) = hwnd {
+        unsafe {
+            ShowWindow(h, 5); // SW_SHOW = 5
+            SetForegroundWindow(h);
+        }
     }
 
     let backend = CrosstermBackend::new(stdout);
@@ -1341,7 +1367,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         ));
 
-    let ver_str = format!(" rSta v{} ", env!("CARGO_PKG_VERSION"));
+    let ver_str = format!(" rStart v{} ", env!("CARGO_PKG_VERSION"));
     let user_host_str = format!("{}@{}", username, host_name);
     let os_str_val = os_str.clone();
 
@@ -1747,7 +1773,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         help_text.push(Line::from(""));
         help_text.extend(format_help_row(
             "CLI Subcommands",
-            "rsta.exe [tui | doctor | version | help]",
+            "rstart.exe [tui | doctor | version | help]",
             max_desc_width,
             &theme,
         ));
@@ -2011,7 +2037,7 @@ mod tests {
         db.entries.push(entry);
 
         let temp_dir = std::env::temp_dir().join(format!(
-            "rstartup_test_{}",
+            "rstart_test_{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()

@@ -22,7 +22,7 @@ impl Default for AppConfig {
         Self {
             theme_mode: "auto".to_string(),
             refresh_rate_ms: 100,
-            enable_borderless: true,
+            enable_borderless: false,
             enable_toasts: true,
             enable_event_log: true,
         }
@@ -30,11 +30,11 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    /// Resolves path to `%APPDATA%\rStartup\config.yaml`
+    /// Resolves path to `%APPDATA%\rStart\config.yaml`
     pub fn config_path() -> Option<PathBuf> {
         std::env::var("APPDATA").ok().map(|appdata| {
             std::path::PathBuf::from(appdata)
-                .join("rStartup")
+                .join("rStart")
                 .join("config.yaml")
         })
     }
@@ -93,7 +93,7 @@ impl AppConfig {
         }
 
         let content = format!(
-            "# rStartup Local Configuration\n\
+            "# rStart Local Configuration\n\
 			 # -----------------------------\n\n\
 			 theme_mode: {}\n\
 			 refresh_rate_ms: {}\n\
