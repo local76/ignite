@@ -19,12 +19,18 @@ windows = { version = "0.52.0", features = [
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
+[package.metadata.deb]
+maintainer = "Jeryd <jerydleuck@gmail.com>"
+assets = [
+    ["target/x86_64-unknown-linux-musl/release/rstart", "usr/bin/rstart", "755"],
+    ["assets/brand/app_icon.png", "usr/share/pixmaps/rstart.png", "644"],
+    ["packaging/desktop/rstart.desktop", "usr/share/applications/rstart.desktop", "644"],
+]
+
 [package.metadata.generate-rpm]
 auto-req = "no"
 assets = [
-    { source = "target/x86_64-unknown-linux-musl/release/rstart", dest = "/usr/bin/rstart", mode = "755" }
+    { source = "target/x86_64-unknown-linux-musl/release/rstart", dest = "/usr/bin/rstart", mode = "755" },
+    { source = "assets/brand/app_icon.png", dest = "/usr/share/pixmaps/rstart.png", mode = "644" },
+    { source = "packaging/desktop/rstart.desktop", dest = "/usr/share/applications/rstart.desktop", mode = "644" }
 ]
-
-
-
-
