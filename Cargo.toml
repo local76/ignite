@@ -1,6 +1,6 @@
 [package]
 name = "rstart"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2024"
 
 [dependencies]
@@ -34,3 +34,6 @@ assets = [
     { source = "assets/brand/app_icon.png", dest = "/usr/share/pixmaps/rstart.png", mode = "644" },
     { source = "packaging/desktop/rstart.desktop", dest = "/usr/share/applications/rstart.desktop", mode = "644" }
 ]
+
+[patch."https://github.com/local76/rCommon.git"]
+rcommon = { path = "../rCommon" }
