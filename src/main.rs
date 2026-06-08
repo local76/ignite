@@ -34,6 +34,25 @@ pub mod win32 {
         query_dark_mode, query_os_version, query_power_status, query_shell_and_terminal,
         get_dwm_accent_color, GlyphMap,
     };
+
+    /// Hide the console window early at startup (common pattern for TUI apps).
+    /// Returns the hwnd if successful (for potential later restore).
+    #[cfg(windows)]
+    pub fn hide_console_at_startup() -> Option<*mut std::ffi::c_void> {
+        unsafe extern "system" {
+            fn GetConsoleWindow() -> *mut std::ffi::c_void;
+            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+        }
+        unsafe {
+            let h = GetConsoleWindow();
+            if !h.is_null() {
+                ShowWindow(h, 0); // SW_HIDE = 0
+                Some(h)
+            } else {
+                None
+            }
+        }
+    }
 }
 use rcommon::widgets::AccentList;
 use win32::{BorderlessConsole, ConsoleTitleGuard, SingleInstanceGuard};
@@ -689,13 +708,6 @@ impl App {
 // 4. Main Entrypoint & Render Loop
 // ==========================================
 
-#[cfg(windows)]
-unsafe extern "system" {
-    fn GetConsoleWindow() -> *mut std::ffi::c_void;
-    fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
-    fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
-}
-
 fn main() -> io::Result<()> {
     // Parse CLI arguments
     let args: Vec<String> = std::env::args().collect();
@@ -752,15 +764,7 @@ fn main() -> io::Result<()> {
     win32::relaunch_in_conhost_if_needed();
 
     #[cfg(windows)]
-    let hwnd = unsafe {
-        let h = GetConsoleWindow();
-        if !h.is_null() {
-            ShowWindow(h, 0); // SW_HIDE = 0
-            Some(h)
-        } else {
-            None
-        }
-    };
+    let _hwnd = win32::hide_console_at_startup();
 
     // Initialize logging switch
     logger::set_event_log_enabled(config.enable_event_log);
@@ -808,7 +812,7 @@ fn main() -> io::Result<()> {
     };
 
     // Set console tab title and clean up on exit
-    let _title_guard = ConsoleTitleGuard::new("rStart");
+    let _title_guard = ConsoleTitleGuard::new("rStartup-tui");
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -832,10 +836,18 @@ fn main() -> io::Result<()> {
     }
 
     #[cfg(windows)]
-    if let Some(h) = hwnd {
-        unsafe {
-            ShowWindow(h, 5); // SW_SHOW = 5
-            SetForegroundWindow(h);
+    {
+        // Re-show the console window after TUI init (parity with rFetch/rWifi).
+        unsafe extern "system" {
+            fn ShowWindow(hWnd: *mut std::ffi::c_void, nCmdShow: i32) -> i32;
+            fn SetForegroundWindow(hWnd: *mut std::ffi::c_void) -> i32;
+        }
+        let hwnd = win32::hide_console_at_startup().unwrap_or(std::ptr::null_mut());
+        if !hwnd.is_null() {
+            unsafe {
+                ShowWindow(hwnd, 5); // SW_SHOW
+                SetForegroundWindow(hwnd);
+            }
         }
     }
 
@@ -1500,6 +1512,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
         } else {
             "▶"
         },
+        true,
     );
 
     // Layout left inner to have headers and separator
@@ -1929,6 +1942,7 @@ fn draw_ui(f: &mut ratatui::Frame, app: &mut App) {
                 } else {
                     "▶"
                 },
+                true,
             );
             f.render_widget(accent_list, left_inner_chunks[2]);
         }

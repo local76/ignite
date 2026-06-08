@@ -18,7 +18,7 @@ pub fn is_event_log_enabled() -> bool {
 pub fn get_appdata_log_path() -> Option<PathBuf> {
     std::env::var("APPDATA").ok().map(|appdata| {
         std::path::PathBuf::from(appdata)
-            .join("rStart")
+            .join("rStartup-tui")
             .join("log.txt")
     })
 }
