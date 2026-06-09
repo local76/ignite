@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [3.1.3] - 2026-06-09
+## [2026.06.09] - 2026-06-09
 
 ### Renamed
 - **Project rename**: `ignite` was previously `rStartup` (also previously `rstart` in some internal references). The Cargo package name, binary name, file paths, AppData paths, registry keys, and docs are now lowercase `ignite`. Behavior and features are unchanged.
