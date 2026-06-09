@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.3] - 2026-06-09
+
+### Renamed
+- **Project rename**: `ignite` was previously `rStartup` (also previously `rstart` in some internal references). The Cargo package name, binary name, file paths, AppData paths, registry keys, and docs are now lowercase `ignite`. Behavior and features are unchanged.
+
+### Fixed
+- **Banner / clap name**: the CLI banner and the clap binary name now print `ignite` (they previously printed the legacy `rstart` / `rstartup` strings).
+
+### Changed
+- README rewritten in the new register: startup dashboard feature list, install matrix, CLI flags, configuration, build instructions, license.
+- Drop the legacy "r*" and "Local freedom" branding throughout.
+- Drop the per-repo `rApps` umbrella and `build_all.ps1` from this repo; build orchestration lives in [`toolkit`](https://github.com/local76/toolkit).
+
 ## Unreleased
 
 ## [3.1.0] - 2026-06-09
