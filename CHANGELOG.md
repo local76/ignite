@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [3.1.0] - 2026-06-09
 ### Changed
-- **Renamed project** from `rstartup-tui` to `rstartup` (matching `rfetch`).
+- **Renamed project** from `ignite-tui` to `ignite` (matching `helm`).
 - **Strict Modularity**: Split monolithic `src/main.rs` (2091 lines) into cleaner submodules (`src/app/`, `src/ui/`, `src/win32.rs`).
 - Moved backup/restore structures to `src/startup/backup_win.rs`.
 - All source files are now strictly under 500 lines.
@@ -15,13 +15,13 @@ All notable changes to this project will be documented in this file.
 - Fixed Rust 2024 edition compilation error with unsafe extern blocks in `src/startup/backup_win.rs`.
 
 ### Changed
-- **Renamed project** from `rStartup` / `rStart` to `rStartup-tui`. The GitHub repository, Cargo package name, binary name, and all user-facing labels now use the `-tui` suffix to make the program's role as a terminal user interface explicit (matching `rTemplate-tui`).
-  - Repository: `local76/rStartup` → `local76/rStartup-tui`
-  - Crate/binary: `rstart` → `rstartup-tui`
-  - Console title: `rStart` → `rStartup-tui`
-  - Config file: `%APPDATA%\rStart\config.yaml` → `%APPDATA%\rStartup-tui\config.yaml`
-  - Log file: `%APPDATA%\rStart\log.txt` → `%APPDATA%\rStartup-tui\log.txt`
-  - Linux package names: `rstart` → `rstartup-tui`
+- **Renamed project** from `ignite` / `rStart` to `ignite-tui`. The GitHub repository, Cargo package name, binary name, and all user-facing labels now use the `-tui` suffix to make the program's role as a terminal user interface explicit (matching `template-tui`).
+  - Repository: `local76/ignite` → `local76/ignite-tui`
+  - Crate/binary: `rstart` → `ignite-tui`
+  - Console title: `rStart` → `ignite-tui`
+  - Config file: `%APPDATA%\rStart\config.yaml` → `%APPDATA%\ignite-tui\config.yaml`
+  - Log file: `%APPDATA%\rStart\log.txt` → `%APPDATA%\ignite-tui\log.txt`
+  - Linux package names: `rstart` → `ignite-tui`
 
 ## [3.0.1] - 2026-06-06
 ### Added

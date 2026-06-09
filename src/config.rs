@@ -31,14 +31,14 @@ impl Default for AppConfig {
 
 impl AppConfig {
     /// Resolves path to the per-app config file.
-    /// Windows: `%APPDATA%\rStartup\config.yaml`
-    /// Linux / macOS: `$XDG_CONFIG_HOME/rStartup/config.yaml` (falls back to `~/.config/rStartup/config.yaml`)
+    /// Windows: `%APPDATA%\ignite\config.yaml`
+    /// Linux / macOS: `$XDG_CONFIG_HOME/ignite/config.yaml` (falls back to `~/.config/ignite/config.yaml`)
     pub fn config_path() -> Option<PathBuf> {
         if cfg!(target_os = "windows") {
             let appdata = std::env::var("APPDATA").ok()?;
             Some(
                 std::path::PathBuf::from(appdata)
-                    .join("rStartup")
+                    .join("ignite")
                     .join("config.yaml"),
             )
         } else {
@@ -52,7 +52,7 @@ impl AppConfig {
                         .map(|h| PathBuf::from(h).join(".config"))
                 })
                 .unwrap_or_else(|| PathBuf::from(".config"));
-            Some(base.join("rStartup").join("config.yaml"))
+            Some(base.join("ignite").join("config.yaml"))
         }
     }
 

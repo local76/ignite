@@ -53,7 +53,7 @@ impl BackupDatabase {
     pub fn file_path() -> Option<PathBuf> {
         std::env::var("APPDATA").ok().map(|appdata| {
             PathBuf::from(appdata)
-                .join("rStartup")
+                .join("ignite")
                 .join("backups.yaml")
         })
     }

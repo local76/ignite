@@ -25,7 +25,7 @@ use logger::log_message;
 use app::App;
 use win32::{ConsoleTitleGuard, SingleInstanceGuard};
 
-pub const RSTARTUP_LOGO: &str = r"
+pub const ignite_LOGO: &str = r"
          _____ __                __               
     _____/ ___// /_____ _________/ /___  ______    
    / ___/\__ \/ __/ __ `/ ___/ __  / / / / __ \   
@@ -35,7 +35,7 @@ pub const RSTARTUP_LOGO: &str = r"
 ";
 
 fn print_help() {
-    println!("{}", RSTARTUP_LOGO);
+    println!("{}", ignite_LOGO);
     println!(
         "rstart — Rust Startup Manager (v{})",
         env!("CARGO_PKG_VERSION")
@@ -52,7 +52,7 @@ fn print_help() {
 }
 
 fn run_doctor() {
-    println!("{}", RSTARTUP_LOGO);
+    println!("{}", ignite_LOGO);
     println!("rStart Doctor — Diagnostic Report");
     println!("====================================");
 
@@ -259,7 +259,7 @@ fn main() -> io::Result<()> {
     };
 
     // Set console tab title and clean up on exit
-    let _title_guard = ConsoleTitleGuard::new("rStartup");
+    let _title_guard = ConsoleTitleGuard::new("ignite");
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();

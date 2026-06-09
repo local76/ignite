@@ -29,7 +29,7 @@ pub fn hide_console_at_startup() -> Option<*mut std::ffi::c_void> {
     }
 }
 
-/// Re-show the console window after TUI init (parity with rFetch/rWifi).
+/// Re-show the console window after TUI init (parity with helm/scout).
 #[cfg(windows)]
 pub fn show_console_window() {
     unsafe extern "system" {

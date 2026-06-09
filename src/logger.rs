@@ -15,12 +15,12 @@ pub fn is_event_log_enabled() -> bool {
 }
 
 /// Helper to resolve the per-app log file path.
-/// Windows: `%APPDATA%\rStartup\log.txt`
-/// Linux / macOS: `$XDG_DATA_HOME/rStartup/log.txt` (falls back to `~/.local/share/rStartup/log.txt`)
+/// Windows: `%APPDATA%\ignite\log.txt`
+/// Linux / macOS: `$XDG_DATA_HOME/ignite/log.txt` (falls back to `~/.local/share/ignite/log.txt`)
 pub fn get_appdata_log_path() -> Option<PathBuf> {
     if cfg!(target_os = "windows") {
         let appdata = std::env::var("APPDATA").ok()?;
-        Some(PathBuf::from(appdata).join("rStartup").join("log.txt"))
+        Some(PathBuf::from(appdata).join("ignite").join("log.txt"))
     } else {
         // Linux / macOS XDG_DATA_HOME fallback
         let base = std::env::var("XDG_DATA_HOME")
@@ -32,7 +32,7 @@ pub fn get_appdata_log_path() -> Option<PathBuf> {
                     .map(|h| PathBuf::from(h).join(".local").join("share"))
             })
             .unwrap_or_else(|| PathBuf::from(".local/share"));
-        Some(base.join("rStartup").join("log.txt"))
+        Some(base.join("ignite").join("log.txt"))
     }
 }
 
