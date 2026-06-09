@@ -218,7 +218,7 @@ impl App {
                     )
                 })
                 .collect();
-            procs.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+            procs.sort_by(|a, b| b.2.total_cmp(&a.2));
             procs.truncate(5);
             self.top_processes = procs;
 
