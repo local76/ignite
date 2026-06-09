@@ -7,7 +7,7 @@ edition = "2024"
 ratatui = "0.29"
 crossterm = "0.28"
 sysinfo = "0.30"
-rcommon = { git = "https://github.com/local76/rCommon.git", branch = "main", features = ["widgets", "sys-info", "window", "clipboard"] }
+rcommon = { git = "https://github.com/local76/rCommon.git", branch = "main", features = ["widgets", "sys-info", "window", "clipboard", "scenes"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56.0"
