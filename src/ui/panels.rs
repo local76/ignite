@@ -7,12 +7,10 @@ use rcommon::widgets::AccentList;
 
 use crate::app::{App, ThemeColors};
 use crate::ui::utils::format_detail_line;
-
 pub fn draw_title_banner(f: &mut Frame, app: &mut App, area: Rect, theme: &ThemeColors) {
-    let username = std::env::var("USERNAME")
-        .unwrap_or_else(|_| std::env::var("USER").unwrap_or_else(|_| "user".to_string()));
-    let host_name = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "localhost".to_string());
-    let os_str = crate::win32::query_os_version();
+    let username = &app.username;
+    let host_name = &app.host_name;
+    let os_str_val = app.os_version.clone();
 
     let title_block = Block::default()
         .borders(Borders::ALL)
@@ -26,7 +24,6 @@ pub fn draw_title_banner(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme
 
     let ver_str = format!(" rStart v{} ", env!("CARGO_PKG_VERSION"));
     let user_host_str = format!("{}@{}", username, host_name);
-    let os_str_val = os_str.clone();
 
     let button_y = area.y + 1;
     let inner_width = area.width.saturating_sub(2) as usize;

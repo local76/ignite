@@ -100,6 +100,9 @@ pub struct App {
     pub drag_active: bool,
     pub drag_start_cursor: Option<(i32, i32)>,
     pub drag_start_window: Option<(i32, i32)>,
+    pub username: String,
+    pub host_name: String,
+    pub os_version: String,
 }
 
 impl App {
@@ -119,6 +122,10 @@ impl App {
         let mut sys = sysinfo::System::new_all();
         sys.refresh_all();
         let networks = sysinfo::Networks::new_with_refreshed_list();
+        let username = std::env::var("USERNAME")
+            .unwrap_or_else(|_| std::env::var("USER").unwrap_or_else(|_| "user".to_string()));
+        let host_name = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "localhost".to_string());
+        let os_version = win32::query_os_version();
         Self {
             status_msg:
                 "Use arrow keys to browse startup entries. Press Space to toggle, Delete to remove. (h for help)"
@@ -159,6 +166,9 @@ impl App {
             drag_active: false,
             drag_start_cursor: None,
             drag_start_window: None,
+            username,
+            host_name,
+            os_version,
         }
     }
 
