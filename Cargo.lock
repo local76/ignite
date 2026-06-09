@@ -249,6 +249,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
+name = "ignite"
+version = "3.1.2"
+dependencies = [
+ "crossterm",
+ "library",
+ "ratatui",
+ "sysinfo",
+ "windows",
+ "winreg",
+ "winres",
+]
+
+[[package]]
 name = "indoc"
 version = "2.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -290,6 +303,19 @@ name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+
+[[package]]
+name = "library"
+version = "4.2.0"
+dependencies = [
+ "crossterm",
+ "ratatui",
+ "rusqlite",
+ "sysinfo",
+ "windows",
+ "windows-sys 0.59.0",
+ "winreg",
+]
 
 [[package]]
 name = "libsqlite3-sys"
@@ -454,38 +480,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "rcommon"
-version = "4.2.0"
-dependencies = [
- "crossterm",
- "ratatui",
- "rusqlite",
- "sysinfo",
- "windows",
- "windows-sys 0.59.0",
- "winreg",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
  "bitflags",
-]
-
-[[package]]
-name = "rstartup"
-version = "3.1.0"
-dependencies = [
- "crossterm",
- "ratatui",
- "rcommon",
- "sysinfo",
- "windows",
- "winreg",
- "winres",
 ]
 
 [[package]]
