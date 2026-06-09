@@ -7,7 +7,7 @@ edition = "2024"
 ratatui = "0.29"
 crossterm = "0.28"
 sysinfo = "0.30"
-library = { git = "https://github.com/local76/library.git", branch = "main", features = ["widgets", "sys-info", "window", "clipboard", "scenes"] }
+library = { path = "../library", features = ["widgets", "sys-info", "window", "clipboard", "scenes"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56.0"
@@ -34,6 +34,3 @@ assets = [
     { source = "assets/brand/app_icon.png", dest = "/usr/share/pixmaps/ignite.png", mode = "644" },
     { source = "packaging/desktop/ignite.desktop", dest = "/usr/share/applications/ignite.desktop", mode = "644" }
 ]
-
-[patch."https://github.com/local76/library.git"]
-library = { path = "../library" }
