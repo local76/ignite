@@ -1,6 +1,6 @@
 [package]
-name = "rstartup-tui"
-version = "0.2.5"
+name = "rstartup"
+version = "3.1.0"
 edition = "2024"
 
 [dependencies]
@@ -22,17 +22,17 @@ winres = "0.1"
 [package.metadata.deb]
 maintainer = "Jeryd <jerydleuck@gmail.com>"
 assets = [
-    ["target/x86_64-unknown-linux-musl/release/rstartup-tui", "usr/bin/rstartup-tui", "755"],
-    ["assets/brand/app_icon.png", "usr/share/pixmaps/rstartup-tui.png", "644"],
-    ["packaging/desktop/rstartup-tui.desktop", "usr/share/applications/rstartup-tui.desktop", "644"],
+    ["target/x86_64-unknown-linux-musl/release/rstartup", "usr/bin/rstartup", "755"],
+    ["assets/brand/app_icon.png", "usr/share/pixmaps/rstartup.png", "644"],
+    ["packaging/desktop/rstartup.desktop", "usr/share/applications/rstartup.desktop", "644"],
 ]
 
 [package.metadata.generate-rpm]
 auto-req = "no"
 assets = [
-    { source = "target/x86_64-unknown-linux-musl/release/rstartup-tui", dest = "/usr/bin/rstartup-tui", mode = "755" },
-    { source = "assets/brand/app_icon.png", dest = "/usr/share/pixmaps/rstartup-tui.png", mode = "644" },
-    { source = "packaging/desktop/rstartup-tui.desktop", dest = "/usr/share/applications/rstartup-tui.desktop", mode = "644" }
+    { source = "target/x86_64-unknown-linux-musl/release/rstartup", dest = "/usr/bin/rstartup", mode = "755" },
+    { source = "assets/brand/app_icon.png", dest = "/usr/share/pixmaps/rstartup.png", mode = "644" },
+    { source = "packaging/desktop/rstartup.desktop", dest = "/usr/share/applications/rstartup.desktop", mode = "644" }
 ]
 
 [patch."https://github.com/local76/rCommon.git"]

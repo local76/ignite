@@ -1,9 +1,14 @@
 #[cfg(windows)]
-mod startup_win;
+pub mod startup_win;
 #[cfg(windows)]
 pub use startup_win::*;
 
+#[cfg(windows)]
+pub mod backup_win;
+#[cfg(windows)]
+pub use backup_win::*;
+
 #[cfg(not(windows))]
-mod startup_mock;
+pub mod startup_mock;
 #[cfg(not(windows))]
 pub use startup_mock::*;

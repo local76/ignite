@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "rcommon"
-version = "3.0.16"
+version = "3.4.4"
 dependencies = [
  "crossterm",
  "ratatui",
@@ -400,8 +400,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "rstartup-tui"
-version = "0.2.5"
+name = "rstartup"
+version = "3.1.0"
 dependencies = [
  "crossterm",
  "ratatui",
