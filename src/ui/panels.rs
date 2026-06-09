@@ -22,7 +22,7 @@ pub fn draw_title_banner(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme
                 .add_modifier(Modifier::BOLD),
         ));
 
-    let ver_str = format!(" rStart v{} ", env!("CARGO_PKG_VERSION"));
+    let ver_str = format!(" ignite v{} ", env!("CARGO_PKG_VERSION"));
     let user_host_str = format!("{}@{}", username, host_name);
 
     let button_y = area.y + 1;

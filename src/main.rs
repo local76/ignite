@@ -25,7 +25,7 @@ use logger::log_message;
 use app::App;
 use win32::{ConsoleTitleGuard, SingleInstanceGuard};
 
-pub const ignite_LOGO: &str = r"
+pub const IGNITE_LOGO: &str = r"
          _____ __                __               
     _____/ ___// /_____ _________/ /___  ______    
    / ___/\__ \/ __/ __ `/ ___/ __  / / / / __ \   
@@ -35,13 +35,13 @@ pub const ignite_LOGO: &str = r"
 ";
 
 fn print_help() {
-    println!("{}", ignite_LOGO);
+    println!("{}", IGNITE_LOGO);
     println!(
-        "rstart — Rust Startup Manager (v{})",
+        "ignite — Rust Startup Manager (v{})",
         env!("CARGO_PKG_VERSION")
     );
     println!("Usage:");
-    println!("  rstart.exe [command]");
+    println!("  ignite.exe [command]");
     println!();
     println!("Commands:");
     println!("  tui       Launch the interactive TUI dashboard (default)");
@@ -52,8 +52,8 @@ fn print_help() {
 }
 
 fn run_doctor() {
-    println!("{}", ignite_LOGO);
-    println!("rStart Doctor — Diagnostic Report");
+    println!("{}", IGNITE_LOGO);
+    println!("ignite Doctor — Diagnostic Report");
     println!("====================================");
 
     // 1. Check OS Version
@@ -95,7 +95,7 @@ fn run_doctor() {
 
     // 3.5 Check Clipboard Access
     print!("Windows Clipboard:        ");
-    match win32::copy_text_to_clipboard("rStart Diagnostic Test Connection") {
+    match win32::copy_text_to_clipboard("ignite Diagnostic Test Connection") {
         Ok(_) => println!("OK (Writable)"),
         Err(e) => println!("FAILED (Error: {})", e),
     }
@@ -161,7 +161,7 @@ fn main() -> io::Result<()> {
     if args.len() > 1 {
         match args[1].as_str() {
             "version" | "--version" | "-v" => {
-                println!("rstart v{}", env!("CARGO_PKG_VERSION"));
+                println!("ignite v{}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
             "help" | "--help" | "-h" => {
@@ -386,7 +386,7 @@ mod tests {
         db.entries.push(entry);
 
         let temp_dir = std::env::temp_dir().join(format!(
-            "rstart_test_{}",
+            "ignite_test_{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()

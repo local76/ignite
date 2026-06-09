@@ -61,6 +61,6 @@ pub fn log_message(level: &str, msg: &str) {
             "WARNING" => 0x0002,         // EVENTLOG_WARNING_TYPE
             _ => 0x0004,                 // EVENTLOG_INFORMATION_TYPE
         };
-        library::event_log::log_system_event("rstart", event_type, 1000, msg);
+        library::event_log::log_system_event("ignite", event_type, 1000, msg);
     }
 }

@@ -110,7 +110,7 @@ impl AppConfig {
         }
 
         let content = format!(
-            "# rStart Local Configuration\n\
+            "# ignite Local Configuration\n\
 			 # -----------------------------\n\n\
 			 theme_mode: {}\n\
 			 refresh_rate_ms: {}\n\

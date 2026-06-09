@@ -52,21 +52,21 @@
 
 │   ├── binaries/                                     # Folder for raw, un-packaged compiled executables
 
-│   │   ├── rstart                                 # Compiled raw binary for Linux
+│   │   ├── ignite                                 # Compiled raw binary for Linux
 
-│   │   └── rstart.exe                             # Compiled raw binary for Windows
+│   │   └── ignite.exe                             # Compiled raw binary for Windows
 
 │   └── packages/                                     # Folder for final bundled distribution formats
 
-│       ├── rstart.apk                             # Compiled Alpine Linux package
+│       ├── ignite.apk                             # Compiled Alpine Linux package
 
-│       ├── rstart.appimage                        # Compiled universal Linux portable executable
+│       ├── ignite.appimage                        # Compiled universal Linux portable executable
 
-│       ├── rstart.deb                             # Compiled Debian/Ubuntu installation package
+│       ├── ignite.deb                             # Compiled Debian/Ubuntu installation package
 
-│       ├── rstart.msi                             # Compiled Windows installer package
+│       ├── ignite.msi                             # Compiled Windows installer package
 
-│       └── rstart.rpm                             # Compiled RedHat/Fedora installation package
+│       └── ignite.rpm                             # Compiled RedHat/Fedora installation package
 
 ├── docs/                                             # Deep-dive documentation for users/contributors
 
@@ -98,15 +98,15 @@
 
 │   │   ├── generate-completions.sh                   # Script to auto-generate below files via Rust 'clap'
 
-│   │   ├── rstart.bash                            # Auto-completion logic for Bash shell
+│   │   ├── ignite.bash                            # Auto-completion logic for Bash shell
 
-│   │   ├── rstart.fish                            # Auto-completion logic for Fish shell
+│   │   ├── ignite.fish                            # Auto-completion logic for Fish shell
 
-│   │   ├── rstart.nu                              # Auto-completion logic for Nushell
+│   │   ├── ignite.nu                              # Auto-completion logic for Nushell
 
-│   │   ├── rstart.ps1                             # Auto-completion logic for PowerShell
+│   │   ├── ignite.ps1                             # Auto-completion logic for PowerShell
 
-│   │   └── rstart.zsh                             # Auto-completion logic for Zsh shell
+│   │   └── ignite.zsh                             # Auto-completion logic for Zsh shell
 
 │   ├── deb/                                          # Debian/Ubuntu package environment
 
@@ -122,15 +122,15 @@
 
 │   ├── desktop/                                      # Standard Linux desktop integration files
 
-│   │   ├── rstart.1                               # Linux man page documentation for terminal users
+│   │   ├── ignite.1                               # Linux man page documentation for terminal users
 
-│   │   └── rstart.desktop                         # Linux application launcher shortcut and metadata
+│   │   └── ignite.desktop                         # Linux application launcher shortcut and metadata
 
 │   ├── flatpak/                                      # Flatpak sandboxed application environment
 
 │   │   ├── build-flatpak.sh                          # Isolated script to execute 'flatpak-builder'
 
-│   │   └── org.local76.rstart.yaml                # Flatpak manifest defining dependencies
+│   │   └── org.local76.ignite.yaml                # Flatpak manifest defining dependencies
 
 │   ├── nix/                                          # NixOS / Nix package manager environment
 
@@ -142,7 +142,7 @@
 
 │   │   ├── build-redhat-rpm.sh                       # Isolated script to set up rpmbuild tree and execute
 
-│   │   └── rstart.spec                            # RPM specification file (Name, Version, %prep, %build)
+│   │   └── ignite.spec                            # RPM specification file (Name, Version, %prep, %build)
 
 │   ├── winget/                                       # Windows Package Manager environment
 

@@ -121,7 +121,7 @@ pub fn draw_help_overlay(f: &mut Frame, app: &mut App, theme: &ThemeColors) {
     help_text.push(Line::from(""));
     help_text.extend(format_help_row(
         "CLI Subcommands",
-        "rstart.exe [tui | doctor | version | help]",
+        "ignite.exe [tui | doctor | version | help]",
         max_desc_width,
         theme,
     ));

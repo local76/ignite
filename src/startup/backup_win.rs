@@ -144,7 +144,7 @@ impl BackupDatabase {
         }
 
         let mut content = String::new();
-        content.push_str("# rStart Backups Database\n# ---------------------------\n\n");
+        content.push_str("# ignite Backups Database\n# ---------------------------\n\n");
         for entry in &self.entries {
             content.push_str(&format!(
                 "uuid: {}\n\
