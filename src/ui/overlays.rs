@@ -3,7 +3,7 @@ use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Clear, Wrap};
-use rcommon::widgets::AccentList;
+use library::widgets::AccentList;
 
 use crate::app::{App, ThemeColors};
 use crate::ui::utils::{centered_rect, format_help_row};

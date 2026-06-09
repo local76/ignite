@@ -1,10 +1,10 @@
 #![allow(deprecated)]
-pub use rcommon::clipboard::copy_text_to_clipboard;
-pub use rcommon::window::{
+pub use library::clipboard::copy_text_to_clipboard;
+pub use library::window::{
     center_console_window, query_cursor_pos, get_window_rect, set_window_pos,
     BorderlessConsole, ConsoleTitleGuard, SingleInstanceGuard, relaunch_in_conhost_if_needed,
 };
-pub use rcommon::sys_info::{
+pub use library::sys_info::{
     get_console_window_dpi, get_system_screen_resolution, query_bios_info,
     query_dark_mode, query_os_version, query_power_status, query_shell_and_terminal,
     get_dwm_accent_color, GlyphMap,

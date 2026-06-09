@@ -191,28 +191,28 @@ pub fn restore_startup_item(entry: &BackupEntry) -> std::io::Result<()> {
     match entry.location_type.as_str() {
         "Registry (User)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-            rcommon::reg::write_string(HKEY_CURRENT_USER, path, &entry.key_name, &entry.command)?;
+            library::reg::write_string(HKEY_CURRENT_USER, path, &entry.key_name, &entry.command)?;
             
             // Re-create enabled startup approved binary value
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
             let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            rcommon::reg::write_binary(HKEY_CURRENT_USER, app_path, &entry.key_name, &val)?;
+            library::reg::write_binary(HKEY_CURRENT_USER, app_path, &entry.key_name, &val)?;
         }
         "Registry (System)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-            rcommon::reg::write_string(HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
+            library::reg::write_string(HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
             
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
             let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            rcommon::reg::write_binary(HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
+            library::reg::write_binary(HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
         }
         "Registry (System 32-bit)" => {
             let path = "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run";
-            rcommon::reg::write_string(HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
+            library::reg::write_string(HKEY_LOCAL_MACHINE, path, &entry.key_name, &entry.command)?;
             
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32";
             let val = vec![0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            rcommon::reg::write_binary(HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
+            library::reg::write_binary(HKEY_LOCAL_MACHINE, app_path, &entry.key_name, &val)?;
         }
         "Startup Folder (User)" => {
             if let Some(mut dir) = get_user_startup_dir() {

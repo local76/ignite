@@ -1,5 +1,5 @@
-﻿[package]
-name = "rstartup"
+[package]
+name = "ignite"
 version = "3.1.2"
 edition = "2024"
 
@@ -7,7 +7,7 @@ edition = "2024"
 ratatui = "0.29"
 crossterm = "0.28"
 sysinfo = "0.30"
-rcommon = { git = "https://github.com/local76/rCommon.git", branch = "main", features = ["widgets", "sys-info", "window", "clipboard", "scenes"] }
+library = { git = "https://github.com/local76/library.git", branch = "main", features = ["widgets", "sys-info", "window", "clipboard", "scenes"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56.0"
@@ -35,5 +35,5 @@ assets = [
     { source = "packaging/desktop/rstartup.desktop", dest = "/usr/share/applications/rstartup.desktop", mode = "644" }
 ]
 
-[patch."https://github.com/local76/rCommon.git"]
-rcommon = { path = "../rCommon" }
+[patch."https://github.com/local76/library.git"]
+library = { path = "../library" }
