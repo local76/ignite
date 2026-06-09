@@ -14,13 +14,26 @@ pub fn is_event_log_enabled() -> bool {
     EVENT_LOG_ENABLED.load(Ordering::Relaxed)
 }
 
-/// Helper to resolve the standard AppData folder for diagnostics logging.
+/// Helper to resolve the per-app log file path.
+/// Windows: `%APPDATA%\rStartup\log.txt`
+/// Linux / macOS: `$XDG_DATA_HOME/rStartup/log.txt` (falls back to `~/.local/share/rStartup/log.txt`)
 pub fn get_appdata_log_path() -> Option<PathBuf> {
-    std::env::var("APPDATA").ok().map(|appdata| {
-        std::path::PathBuf::from(appdata)
-            .join("rStartup")
-            .join("log.txt")
-    })
+    if cfg!(target_os = "windows") {
+        let appdata = std::env::var("APPDATA").ok()?;
+        Some(PathBuf::from(appdata).join("rStartup").join("log.txt"))
+    } else {
+        // Linux / macOS XDG_DATA_HOME fallback
+        let base = std::env::var("XDG_DATA_HOME")
+            .ok()
+            .map(PathBuf::from)
+            .or_else(|| {
+                std::env::var("HOME")
+                    .ok()
+                    .map(|h| PathBuf::from(h).join(".local").join("share"))
+            })
+            .unwrap_or_else(|| PathBuf::from(".local/share"));
+        Some(base.join("rStartup").join("log.txt"))
+    }
 }
 
 /// Thread-safe silent logger helper that appends diagnostic logs to a local file.
@@ -32,7 +45,7 @@ pub fn log_message(level: &str, msg: &str) {
         if let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(path)
+            .open(&path)
         {
             let epoch = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -51,4 +64,3 @@ pub fn log_message(level: &str, msg: &str) {
         rcommon::event_log::log_system_event("rstart", event_type, 1000, msg);
     }
 }
-
