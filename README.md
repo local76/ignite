@@ -1,64 +1,84 @@
-ignite
+# ignite
 
-A local terminal-based startup applications manager.
+> A local startup-time dashboard for autostart apps and boot diagnostics.
 
-How to Install:
-- exe / msi / deb / rpm: Download from the releases page (https://github.com/local76/ignite/releases)
-- winget: winget install local76.ignite
-- aur: yay -S ignite-bin
+`ignite` is a single-binary TUI for inspecting the things that launch at boot — the Windows Run / RunOnce registry keys, the Startup folders, the scheduled tasks, the systemd user services on Linux. It also ships a `doctor` command for verifying the log paths, registry access, and config file integrity of the local76 ecosystem.
 
-## Embedding library screensaver effects (library 4.2+)
+`ignite` is part of the [local76](https://github.com/local76/local76) ecosystem and depends on [`library`](https://github.com/local76/library) for its TUI widgets and design system.
 
-As of library 4.2, all 10 r* screensaver effects (glyphs, beams,
-bounce, flame, gnats, bursts, cosmos, disco, storm,
-chaos) are consolidated into the `library::role::application::scenes`
-module. If your `Cargo.toml` enables the `scenes` feature, you can
-embed any r* effect into this app's TUI without a separate crate:
+---
 
-```rust
-use library::core::screensaver::Screensaver;
-use library::core::TerminalCell;
-use library::role::application::scenes::matrix::Matrix;
+## Features
 
-// In a Ratatui draw closure:
-let mut effect = Matrix::new();
-let mut grid = vec![TerminalCell::default(); cols * rows];
-effect.update(std::time::Duration::from_millis(16), cols, rows);
-effect.draw(&mut grid, cols, rows);
+- **Autostart inventory.** Lists every program configured to launch at boot, with its source (registry Run key, Startup folder, scheduled task, cron, systemd, etc.), its file size, and its last-modified timestamp.
+- **Disable / enable.** Toggle a single entry off and back on. Changes are reversible: `ignite restore` puts the registry to its previous state.
+- **`ignite doctor`.** Audits the local76 ecosystem: verifies `%APPDATA%\<app>\config.yaml` is writable, that the winget SQLite is present, that the screensaver registry is in a known state, that the `trance` registry is current.
+- **`ignite backup`.** Snapshots the current autostart state to `%APPDATA%\ignite\backups\<timestamp>.yaml` for diff-and-restore.
+- **Hot-loop caching.** Static registry keys are cached in memory; only the modified-time check hits the disk.
+
+---
+
+## Install
+
+### Windows
+- **Standalone**: download `ignite.exe` from the [latest release](https://github.com/local76/ignite/releases).
+- **winget**: `winget install local76.ignite`
+- **MSI**: download the `.msi` from the releases page.
+
+### Linux
+- **Debian/Ubuntu**: `sudo dpkg -i ignite.deb`
+- **Red Hat/Fedora**: `sudo rpm -i ignite.rpm`
+- **Arch (AUR)**: `yay -S ignite-bin`
+
+---
+
+## Usage
+
+```
+ignite                     # launch the autostart TUI
+ignite list                # one-shot: print the autostart inventory to stdout
+ignite doctor              # run boot-time diagnostics
+ignite backup              # snapshot the current autostart state
+ignite restore <file>      # restore from a snapshot
+ignite disable <name>      # disable a single entry
+ignite enable <name>       # re-enable a disabled entry
+ignite --version
+ignite --help
 ```
 
-Available types in library 4.2:
-- `scenes::matrix::Matrix`
-- `scenes::beams::Beams`
-- `scenes::bhop::BhopDashboard`
-- `scenes::fire::FireEffect`
-- `scenes::fireflies::Fireflies`
-- `scenes::fireworks::Fireworks`
-- `scenes::life::LifeEffect`
-- `scenes::party::Party`
-- `scenes::pour::Pour`
-- `scenes::unstable::Unstable`
+Inside the TUI:
 
-To run an effect as a standalone terminal screensaver (own raw-tty
-loop, Ctrl-C to exit), use `library::screensaver_runtime::run_main`:
+| Key | Action |
+|---|---|
+| `↑` / `↓` | Move selection |
+| `Space` | Toggle the selected entry on / off |
+| `b` | Backup the current state |
+| `r` | Refresh |
+| `q` | Quit |
 
-```rust
-fn main() {
-    library::screensaver_runtime::run_main(
-        library::role::application::scenes::matrix::Matrix::new(),
-        "glyphs",
-    );
-}
+---
+
+## Configuration
+
+A YAML config file is auto-generated on first run:
+
+- **Windows**: `%APPDATA%\ignite\config.yaml`
+- **Linux**: `~/.config/ignite/config.yaml`
+
+Backups are stored at `%APPDATA%\ignite\backups\` (Windows) or `~/.local/share/ignite/backups/` (Linux).
+
+---
+
+## Build from source
+
+```pwsh
+git clone https://github.com/local76/ignite.git
+cd ignite
+cargo build --release
 ```
 
-The `screensaver_runtime` module is gated on the `screensaver-runtime`
-feature (default-off) — enable it in your Cargo.toml if your app needs
-to host a screensaver process directly.
+---
 
-For the design system surface (status bar, toast, markdown viewer,
-theme + accent colors, layout guard, 12 canonical TUI effects),
-import the design façade:
+## License
 
-```rust
-use library::interface::tui::design::prelude::*;
-```
+MIT. See [LICENSE.md](LICENSE.md).
