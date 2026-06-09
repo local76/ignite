@@ -12,11 +12,11 @@ Write-Host "Compiling native Windows binary..." -ForegroundColor Yellow
 cargo build --release
 if ($LASTEXITCODE -eq 0) {
     # Ensure directories exist
-    New-Item -ItemType Directory -Force -Path "dist/binaries" | Out-Null
-    New-Item -ItemType Directory -Force -Path "dist/packages" | Out-Null
+    New-Item -ItemType Directory -Force -Path "$projectRoot/dist/binaries" | Out-Null
+    New-Item -ItemType Directory -Force -Path "$projectRoot/dist/packages" | Out-Null
 
     # Copy the compiled Windows binary
-    Copy-Item "target/release/rstartup.exe" "dist/binaries/rstartup.exe" -Force
+    Copy-Item "target/release/rstartup.exe" "$projectRoot/dist/binaries/rstartup.exe" -Force
     Write-Host "[SUCCESS] Compiled and copied native binary to dist/binaries/rstartup.exe" -ForegroundColor Green
 } else {
     Write-Error "Cargo build failed!"
@@ -25,8 +25,9 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 # 2. Compile/mock Linux binary (rstartup)
-if (-not (Test-Path "dist/binaries/rstartup") -or (Get-Item "dist/binaries/rstartup").Length -eq 0) {
-    [System.IO.File]::WriteAllText("dist/binaries/rstartup", "[Mock Linux ELF binary for rstartup]")
+$elfPath = "$projectRoot/dist/binaries/rstartup"
+if (-not (Test-Path $elfPath) -or (Get-Item $elfPath).Length -eq 0) {
+    [System.IO.File]::WriteAllText($elfPath, "[Mock Linux ELF binary for rstartup]")
 }
 Write-Host "[MOCKED] Linux ELF binary ensured at dist/binaries/rstartup" -ForegroundColor DarkYellow
 
@@ -40,21 +41,22 @@ if ($hasWix) {
         cargo wix --wxs packaging/wix/main.wxs
         $msiPath = Get-ChildItem -Path "target/wix/*.msi" | Select-Object -First 1
         if ($msiPath) {
-            Copy-Item $msiPath.FullName -Destination "dist/packages/rstartup.msi" -Force
+            Copy-Item $msiPath.FullName -Destination "$projectRoot/dist/packages/rstartup.msi" -Force
             Write-Host "[SUCCESS] Built and copied MSI to dist/packages/rstartup.msi" -ForegroundColor Green
         }
     }
 }
 
-if (-not (Test-Path "dist/packages/rstartup.msi") -or (Get-Item "dist/packages/rstartup.msi").Length -eq 0) {
-    [System.IO.File]::WriteAllText("dist/packages/rstartup.msi", "[Mock Windows MSI Installer package for rstartup]")
+$msiDestPath = "$projectRoot/dist/packages/rstartup.msi"
+if (-not (Test-Path $msiDestPath) -or (Get-Item $msiDestPath).Length -eq 0) {
+    [System.IO.File]::WriteAllText($msiDestPath, "[Mock Windows MSI Installer package for rstartup]")
     Write-Host "[MOCKED] Windows MSI installer package ensured at dist/packages/rstartup.msi" -ForegroundColor DarkYellow
 }
 
 # Ensure all other packages are present as mocks/stubs
 $mockPackages = @("rstartup.apk", "rstartup.appimage", "rstartup.deb", "rstartup.rpm")
 foreach ($pkg in $mockPackages) {
-    $pkgPath = "dist/packages/$pkg"
+    $pkgPath = "$projectRoot/dist/packages/$pkg"
     if (-not (Test-Path $pkgPath) -or (Get-Item $pkgPath).Length -eq 0) {
         $ext = ($pkg -split "\.")[-1]
         [System.IO.File]::WriteAllText($pkgPath, "[Mock $ext package for rstartup]")
