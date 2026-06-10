@@ -12,7 +12,7 @@ pub fn draw_help_overlay(f: &mut Frame, app: &mut App, theme: &ThemeColors) {
     let size = f.area();
     let area = centered_rect(65, 70, size);
     let popup_block = Block::default()
-        .title(" Keyboard Shortcuts & TUI Commands ")
+        .title(" Keyboard Shortcuts & App Commands ")
         .title_style(
             Style::default()
                 .fg(theme.accent)

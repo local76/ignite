@@ -37,7 +37,7 @@ fn print_help() {
     println!("  ignite.exe [command]");
     println!();
     println!("Commands:");
-    println!("  tui       Launch the interactive TUI dashboard (default)");
+    println!("  tui       Launch the interactive app dashboard (default)");
     println!("  list      Search and list all active startup applications");
     println!("  doctor    Verify system registry, log paths, and console scaling");
     println!("  version   Print application version info");

@@ -2,9 +2,9 @@
 
 > A local startup-time dashboard for autostart apps and boot diagnostics.
 
-`ignite` is a single-binary TUI for inspecting the things that launch at boot — the Windows Run / RunOnce registry keys, the Startup folders, the scheduled tasks, the systemd user services on Linux. It also ships a `doctor` command for verifying the log paths, registry access, and config file integrity of the local76 ecosystem.
+`ignite` is a single-binary App for inspecting the things that launch at boot — the Windows Run / RunOnce registry keys, the Startup folders, the scheduled tasks, the systemd user services on Linux. It also ships a `doctor` command for verifying the log paths, registry access, and config file integrity of the local76 ecosystem.
 
-`ignite` is part of the [local76](https://github.com/local76/local76) ecosystem and depends on [`library`](https://github.com/local76/library) for its TUI widgets and design system.
+`ignite` is part of the [local76](https://github.com/local76/local76) ecosystem and depends on [`library`](https://github.com/local76/library) for its App widgets and design system.
 
 ---
 
@@ -35,7 +35,7 @@
 ## Usage
 
 ```
-ignite                     # launch the autostart TUI
+ignite                     # launch the autostart App
 ignite list                # one-shot: print the autostart inventory to stdout
 ignite doctor              # run boot-time diagnostics
 ignite backup              # snapshot the current autostart state
@@ -46,7 +46,7 @@ ignite --version
 ignite --help
 ```
 
-Inside the TUI:
+Inside the App:
 
 | Key | Action |
 |---|---|
