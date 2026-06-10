@@ -181,7 +181,7 @@ mod tests {
     use super::*;
     use ratatui::style::Color;
     use crate::app::get_theme;
-    use crate::ui::utils::{wrap_text, parse_markdown_to_lines};
+    use crate::ui::text_format::{wrap_text, parse_markdown_to_lines};
 
     #[test]
     fn test_wrap_text() {

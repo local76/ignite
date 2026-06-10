@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use library::widgets::AccentList;
 
 use crate::app::{App, ThemeColors};
-use crate::ui::utils::format_detail_line;
+use crate::ui::text_format::format_detail_line;
 pub fn draw_title_banner(f: &mut Frame, app: &mut App, area: Rect, theme: &ThemeColors) {
     let username = &app.username;
     let host_name = &app.host_name;

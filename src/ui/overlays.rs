@@ -6,7 +6,7 @@ use ratatui::widgets::{Block, Borders, Paragraph, Clear, Wrap};
 use library::widgets::AccentList;
 
 use crate::app::{App, ThemeColors};
-use crate::ui::utils::{centered_rect, format_help_row};
+use crate::ui::text_format::{centered_rect, format_help_row};
 
 pub fn draw_help_overlay(f: &mut Frame, app: &mut App, theme: &ThemeColors) {
     let size = f.area();

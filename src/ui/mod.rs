@@ -8,9 +8,9 @@ use crate::app::{App, get_theme};
 
 pub mod overlays;
 pub mod widgets;
-pub mod utils;
+pub mod text_format;
 
-pub use utils::{centered_rect, parse_markdown_to_lines};
+pub use text_format::{centered_rect, parse_markdown_to_lines};
 
 pub fn draw_ui(f: &mut Frame, app: &mut App) {
     let size = f.area();
