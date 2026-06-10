@@ -109,7 +109,12 @@ pub fn draw_startup_list(f: &mut Frame, app: &App, area: Rect, theme: &ThemeColo
     let left_inner = left_block.inner(area);
     f.render_widget(left_block, area);
 
-    // Render startup applications list
+    // Maximum length for startup item names before truncation
+const MAX_NAME_LENGTH: usize = 32;
+// Length to keep when truncating (3 less than max to account for "...")
+const TRUNCATED_NAME_LENGTH: usize = 29;
+
+// Render startup applications list
     let items_strings: Vec<String> = app.startup_items.iter().map(|item| {
         let status_str = if item.enabled { "Enabled" } else { "Disabled" };
         let type_str = if item.location_type.to_lowercase().contains("user") {
@@ -117,8 +122,8 @@ pub fn draw_startup_list(f: &mut Frame, app: &App, area: Rect, theme: &ThemeColo
         } else {
             "System"
         };
-        let name_trimmed = if item.name.len() > 32 {
-            format!("{}...", &item.name[..29])
+        let name_trimmed = if item.name.len() > MAX_NAME_LENGTH {
+            format!("{}...", &item.name[..TRUNCATED_NAME_LENGTH])
         } else {
             item.name.clone()
         };

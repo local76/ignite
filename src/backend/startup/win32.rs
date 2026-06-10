@@ -362,6 +362,12 @@ fn parse_exe_path(command: &str) -> Option<std::path::PathBuf> {
     }
 }
 
+/// File size thresholds for startup impact classification (in MB)
+const HIGH_IMPACT_MB: f64 = 50.0;
+const MEDIUM_IMPACT_MB: f64 = 15.0;
+/// Bytes per MB (1024 * 1024)
+const BYTES_PER_MB: f64 = 1_048_576.0;
+
 /// Heuristically estimate boot performance startup impact
 pub fn estimate_startup_impact(command: &str) -> String {
     let path_opt = parse_exe_path(command);
@@ -379,10 +385,10 @@ pub fn estimate_startup_impact(command: &str) -> String {
 
     // 1. Check file size
     if let Ok(metadata) = std::fs::metadata(&path) {
-        let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
-        if size_mb > 50.0 {
+        let size_mb = metadata.len() as f64 / BYTES_PER_MB;
+        if size_mb > HIGH_IMPACT_MB {
             return "High".to_string();
-        } else if size_mb > 15.0 {
+        } else if size_mb > MEDIUM_IMPACT_MB {
             return "Medium".to_string();
         }
     }
