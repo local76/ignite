@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.6.10] - 2026-06-09
+
+### Changed
+- **AppData Directory Realignment**: Moved user configuration, database, and log files into a nested %APPDATA%\local76\app\ignite structure to organize the ecosystem's configuration space.
+- **Repository Rename**: Renamed repository and local directory to pp-ignite for cleaner ecosystem taxonomy.
+
 All notable changes to this project will be documented in this file.
 
 ## [2026.6.9] - 2026-06-09
