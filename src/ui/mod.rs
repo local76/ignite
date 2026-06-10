@@ -9,6 +9,7 @@ use crate::app::{App, get_theme};
 pub mod overlays;
 pub mod widgets;
 pub mod text_format;
+pub mod accent_list;
 
 pub use text_format::{centered_rect, parse_markdown_to_lines};
 

@@ -14,6 +14,7 @@ mod backend;
 mod win32;
 mod app;
 mod ui;
+mod doctor;
 
 use app::App;
 
@@ -36,7 +37,7 @@ fn print_help() {
     println!("  ignite.exe [command]");
     println!();
     println!("Commands:");
-    println!("  tui       Launch the interactive app dashboard (default)");
+    println!("  ui        Launch the interactive app dashboard (default)");
     println!("  list      Search and list all active startup applications");
     println!("  doctor    Verify system registry, log paths, and console scaling");
     println!("  version   Print application version info");
@@ -44,7 +45,7 @@ fn print_help() {
 }
 
 fn run_doctor() {
-    library::interface::cli::doctor::run_doctor();
+    doctor::run();
 }
 
 fn main() -> io::Result<()> {
@@ -69,8 +70,8 @@ fn main() -> io::Result<()> {
                 if items.is_empty() {
                     println!("No startup items found.");
                 } else {
-                    println!("{:<30} {:<10} {:<15} {:<12} Command", "Name", "Status", "Type", "Impact");
-                    println!("{}", "-".repeat(100));
+                    println!("{:<30} {:<10} {:<15} {:<12} {}", "Application Name", "Status", "Startup Type", "Impact", "Command");
+                    println!("{:-<120}", "");
                     for item in items {
                         let status = if item.enabled { "Enabled" } else { "Disabled" };
                         let type_str = if item.location_type.to_lowercase().contains("user") {
@@ -83,8 +84,8 @@ fn main() -> io::Result<()> {
                 }
                 return Ok(());
             }
-            "tui" | "--relaunched" => {
-                // Proceed to run TUI
+            "ui" | "--relaunched" => {
+                // Proceed to run UI
             }
             other => {
                 if other == "--relaunched" {
