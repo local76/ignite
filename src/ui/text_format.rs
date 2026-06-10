@@ -3,7 +3,7 @@ use ratatui::text::{Line, Span};
 
 // Re-export shared implementations from library design system to prevent code duplication.
 #[allow(unused_imports)]
-pub use library::interface::tui::design::prelude::{
+pub use library::interface::app::design::prelude::{
     centered_rect, format_help_row, parse_markdown_to_lines, wrap_text,
 };
 

@@ -3,7 +3,7 @@ use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::Block;
 use crate::app::App;
 use crate::win32;
-use library::interface::tui::design::prelude::centered_rect;
+use library::interface::app::design::prelude::centered_rect;
 
 pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
     let (term_w, term_h) = crossterm::terminal::size().unwrap_or((100, 35));

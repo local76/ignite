@@ -45,6 +45,7 @@ impl<'a> AccentList<'a> {
     }
 
     /// First-class constructor using the bundled `AccentColors` (recommended).
+    #[allow(dead_code)]
     pub fn new_with_colors(
         items: Vec<&'a str>,
         selected_index: usize,

@@ -13,7 +13,7 @@ pub mod mouse;
 pub use keys::handle_key;
 pub use mouse::handle_mouse;
 
-pub use library::interface::tui::design::prelude::{ThemeColors, get_theme};
+pub use library::interface::app::design::prelude::{ThemeColors, get_theme};
 
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
