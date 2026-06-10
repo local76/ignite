@@ -4,7 +4,7 @@ use ratatui::text::Line;
 
 use crate::config;
 use crate::logger::log_message;
-use crate::startup;
+use crate::backend;
 use crate::win32;
 
 pub mod keys;
@@ -13,34 +13,7 @@ pub mod mouse;
 pub use keys::handle_key;
 pub use mouse::handle_mouse;
 
-#[derive(Debug, Clone, Copy)]
-pub struct ThemeColors {
-    pub border: Color,
-    pub border_active: Color,
-    pub text_main: Color,
-    pub text_dim: Color,
-    pub accent: Color,
-}
-
-pub fn get_theme(dark: bool, accent_color: Color) -> ThemeColors {
-    if dark {
-        ThemeColors {
-            border: Color::Rgb(68, 68, 84),
-            border_active: accent_color,
-            text_main: Color::Rgb(248, 248, 242),
-            text_dim: Color::Rgb(136, 136, 153),
-            accent: accent_color,
-        }
-    } else {
-        ThemeColors {
-            border: Color::Rgb(180, 180, 190),
-            border_active: accent_color,
-            text_main: Color::Rgb(40, 42, 54),
-            text_dim: Color::Rgb(100, 100, 115),
-            accent: accent_color,
-        }
-    }
-}
+pub use library::interface::tui::design::prelude::{ThemeColors, get_theme};
 
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -67,7 +40,7 @@ pub struct App {
 
     // Interactive Startup Items selection
     pub selected_startup: usize,
-    pub startup_items: Vec<startup::StartupItem>,
+    pub startup_items: Vec<backend::StartupItem>,
     pub theme_mode: String,
     pub refresh_rate_ms: u32,
     pub enable_borderless: bool,
@@ -93,7 +66,7 @@ pub struct App {
     pub selection_pending_copy: bool,
 
     pub show_backups: bool,
-    pub backup_db: startup::BackupDatabase,
+    pub backup_db: backend::BackupDatabase,
     pub selected_backup: usize,
     pub quit_btn_bounds: Option<(u16, u16, u16)>,
     pub help_btn_bounds: Option<(u16, u16, u16)>,
@@ -140,7 +113,7 @@ impl App {
             last_theme_check: Instant::now(),
             enable_toasts: config.enable_toasts,
             selected_startup: 0,
-            startup_items: startup::scan_startup_items(),
+            startup_items: backend::scan_startup_items(),
             theme_mode: config.theme_mode.clone(),
             refresh_rate_ms: config.refresh_rate_ms,
             enable_borderless: config.enable_borderless,
@@ -159,7 +132,7 @@ impl App {
             selection_end: None,
             selection_pending_copy: false,
             show_backups: false,
-            backup_db: startup::BackupDatabase::load(),
+            backup_db: backend::BackupDatabase::load(),
             selected_backup: 0,
             quit_btn_bounds: None,
             help_btn_bounds: None,

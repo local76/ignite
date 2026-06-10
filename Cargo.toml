@@ -17,7 +17,7 @@ windows = { version = "0.52.0", features = [
 ] }
 
 [target.'cfg(windows)'.build-dependencies]
-winres = "0.1"
+embed-resource = "2"
 
 [package.metadata.deb]
 maintainer = "Jeryd <jerydleuck@gmail.com>"

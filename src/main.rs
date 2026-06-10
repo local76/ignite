@@ -5,25 +5,18 @@ use std::{
 };
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
-use ratatui::{
-    Terminal,
-    backend::CrosstermBackend,
+    event::{self, Event, KeyEventKind},
 };
 
 mod config;
 mod logger;
-mod startup;
+mod backend;
 mod win32;
 mod app;
 mod ui;
 
 use logger::log_message;
 use app::App;
-use win32::{ConsoleTitleGuard, SingleInstanceGuard};
 
 pub const IGNITE_LOGO: &str = r"
          _____ __                __               
@@ -173,7 +166,7 @@ fn main() -> io::Result<()> {
                 return Ok(());
             }
             "list" => {
-                let items = startup::scan_startup_items();
+                let items = backend::scan_startup_items();
                 if items.is_empty() {
                     println!("No startup items found.");
                 } else {
@@ -220,74 +213,15 @@ fn main() -> io::Result<()> {
         &format!("Application initializing with config: {:?}", config),
     );
 
-    // Restore terminal if application crashes/panics
-    let original_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let msg = panic_info
-            .payload()
-            .downcast_ref::<&str>()
-            .copied()
-            .or_else(|| {
-                panic_info
-                    .payload()
-                    .downcast_ref::<String>()
-                    .map(|s| s.as_str())
-            })
-            .unwrap_or("unknown panic");
-        let location = panic_info
-            .location()
-            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
-            .unwrap_or_default();
-        log_message("PANIC", &format!("Panic occurred at {}: {}", location, msg));
+    // Bootstrap terminal via shared library utility
+    let mut tui_config = library::lifecycle::foreground::tui_bootstrap::TuiBootstrapConfig::new("ignite");
+    tui_config.borderless = config.enable_borderless;
+    tui_config.size = (100, 35);
 
-        let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
-        original_hook(panic_info);
-    }));
-
-    // Enforce single instance constraint
-    let _instance_guard = match SingleInstanceGuard::try_new() {
-        Ok(g) => g,
-        Err(e) => {
-            log_message(
-                "ERROR",
-                &format!("SingleInstanceGuard blocked launch: {}", e),
-            );
-            eprintln!("Error: {}", e);
-            std::process::exit(1);
-        }
-    };
-
-    // Set console tab title and clean up on exit
-    let _title_guard = ConsoleTitleGuard::new("ignite");
-
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-
-    // Force scalable minimal size or custom sizing
-    let _ = execute!(stdout, crossterm::terminal::SetSize(100, 35));
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-
-    // Enable borderless console framing immediately after size adjustment if configured
-    let _borderless = if config.enable_borderless {
-        Some(win32::BorderlessConsole::enable())
-    } else {
-        None
-    };
-
-    // Allow console size/style changes to propagate to the buffer
-    std::thread::sleep(Duration::from_millis(50));
-
-    if _borderless.is_none() {
-        win32::center_console_window();
-    }
+    let (mut terminal, _guards) = library::lifecycle::foreground::tui_bootstrap::bootstrap_tui(tui_config)?;
 
     #[cfg(windows)]
     win32::show_console_window();
-
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
 
     let mut app = App::new(&config);
     let tick_rate = Duration::from_millis(config.refresh_rate_ms as u64);
@@ -296,6 +230,9 @@ fn main() -> io::Result<()> {
     log_message("RUN", "Entering main event loop");
 
     while !app.should_quit {
+        if library::lifecycle::foreground::tui_bootstrap::is_app_shutting_down() {
+            break;
+        }
         app.check_status_decay();
         app.sync_theme_if_needed(&config);
         app.sync_power_status_if_needed();
@@ -335,12 +272,7 @@ fn main() -> io::Result<()> {
 
     log_message("EXIT", "Shutting down cleanly.");
 
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    library::lifecycle::foreground::tui_bootstrap::shutdown_tui(&mut terminal)?;
     Ok(())
 }
 
@@ -373,8 +305,8 @@ mod tests {
 
     #[test]
     fn test_backup_database_serialization() {
-        let mut db = startup::BackupDatabase::default();
-        let entry = startup::BackupEntry {
+        let mut db = backend::BackupDatabase::default();
+        let entry = backend::BackupEntry {
             uuid: "test-id".to_string(),
             timestamp: "2026-06-05T20:53:11".to_string(),
             name: "Test App".to_string(),
@@ -400,7 +332,7 @@ mod tests {
 
         db.save().unwrap();
 
-        let loaded = startup::BackupDatabase::load();
+        let loaded = backend::BackupDatabase::load();
         assert_eq!(loaded.entries.len(), 1);
         assert_eq!(loaded.entries[0].name, "Test App");
 

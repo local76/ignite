@@ -7,7 +7,7 @@ use ratatui::widgets::{Block, Borders, Paragraph, Clear};
 use crate::app::{App, get_theme};
 
 pub mod overlays;
-pub mod panels;
+pub mod widgets;
 pub mod utils;
 
 pub use utils::{centered_rect, parse_markdown_to_lines};
@@ -68,7 +68,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
         .split(size);
 
     // 1. Draw Title Banner
-    panels::draw_title_banner(f, app, chunks[0], &theme);
+    widgets::draw_title_banner(f, app, chunks[0], &theme);
 
     // 2. Main Content splitting vertically
     let content_chunks = Layout::default()
@@ -76,12 +76,12 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(5), Constraint::Length(14)])
         .split(chunks[1]);
 
-    // Draw panels
-    panels::draw_startup_list(f, app, content_chunks[0], &theme);
-    panels::draw_startup_details(f, app, content_chunks[1], &theme);
+    // Draw widgets
+    widgets::draw_startup_list(f, app, content_chunks[0], &theme);
+    widgets::draw_startup_details(f, app, content_chunks[1], &theme);
 
     // 3. Status Bar Footer
-    panels::draw_status_bar(f, app, chunks[2], &theme);
+    widgets::draw_status_bar(f, app, chunks[2], &theme);
 
     // 4. Help Overlay Modal
     if app.show_help {

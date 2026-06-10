@@ -1,6 +1,6 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::app::App;
-use crate::startup;
+use crate::backend;
 use crate::win32;
 
 const README_CONTENT: &str = include_str!("../../README.md");
@@ -126,11 +126,11 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
             KeyCode::Enter => {
                 if !app.backup_db.entries.is_empty() {
                     let entry = app.backup_db.entries[app.selected_backup].clone();
-                    match startup::restore_startup_item(&entry) {
+                    match backend::restore_startup_item(&entry) {
                         Ok(_) => {
                             app.backup_db.entries.remove(app.selected_backup);
                             let _ = app.backup_db.save();
-                            app.startup_items = startup::scan_startup_items();
+                            app.startup_items = backend::scan_startup_items();
                             app.selected_startup = 0;
                             app.show_backups = false;
                             app.set_status(format!("Successfully restored: {}", entry.name));
@@ -156,6 +156,9 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
     // Standard hotkeys
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => {
+            app.should_quit = true;
+        }
+        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.should_quit = true;
         }
         KeyCode::Char('c') | KeyCode::Char('C') => {
@@ -209,7 +212,7 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
         KeyCode::Char(' ') => {
             if !app.startup_items.is_empty() {
                 let mut item = app.startup_items[app.selected_startup].clone();
-                match startup::toggle_startup_item(&mut item) {
+                match backend::toggle_startup_item(&mut item) {
                     Ok(_) => {
                         app.startup_items[app.selected_startup] = item.clone();
                         let state = if item.enabled { "Enabled" } else { "Disabled" };
@@ -222,20 +225,20 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Char('u') | KeyCode::Char('U') | KeyCode::Char('b') | KeyCode::Char('B') => {
-            app.backup_db = startup::BackupDatabase::load();
+            app.backup_db = backend::BackupDatabase::load();
             app.show_backups = true;
             app.selected_backup = 0;
             app.set_status("Backups view active. Press Esc to close, Enter to restore, Del to delete entry.".to_string());
         }
         KeyCode::Delete if !app.startup_items.is_empty() => {
             let item = app.startup_items[app.selected_startup].clone();
-            let mut db = startup::BackupDatabase::load();
+            let mut db = backend::BackupDatabase::load();
             if let Err(e) = db.add_item(&item) {
                 app.set_status(format!("Failed to backup item: {}", e));
             } else {
-                match startup::delete_startup_item(&item) {
+                match backend::delete_startup_item(&item) {
                     Ok(_) => {
-                        app.startup_items = startup::scan_startup_items();
+                        app.startup_items = backend::scan_startup_items();
                         app.selected_startup = 0;
                         app.set_status(format!("Deleted and backed up: {}", item.name));
                     }

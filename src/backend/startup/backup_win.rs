@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
-use crate::startup::startup_win::{StartupItem, get_user_startup_dir, get_system_startup_dir};
+use crate::backend::{StartupItem, get_user_startup_dir, get_system_startup_dir};
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -163,7 +163,7 @@ impl BackupDatabase {
                 entry.key_name,
             ));
         }
-        std::fs::write(path, content)
+        library::write_file_atomic(path, content)
     }
 
     pub fn add_item(&mut self, item: &StartupItem) -> std::io::Result<()> {

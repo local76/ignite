@@ -123,7 +123,7 @@ impl AppConfig {
             self.enable_toasts,
             self.enable_event_log,
         );
-        std::fs::write(path, content)
+        library::write_file_atomic(path, content)
     }
 }
 

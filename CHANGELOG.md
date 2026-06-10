@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Renamed
 - **Project rename**: `ignite` was previously `rStartup` (also previously `rstart` in some internal references). The Cargo package name, binary name, file paths, AppData paths, registry keys, and docs are now lowercase `ignite`. Behavior and features are unchanged.
 
+### Refactored
+- **TUI Blueprint alignment**: Re-architected directory and module tree to standard TUI layout. Renamed `src/ui/panels.rs` to `src/ui/widgets.rs`. Created `src/backend/` directory, moving `src/startup.rs` to `src/backend/mod.rs` and the Windows, mock, and backup startup modules to `src/backend/startup/`.
+
 ### Fixed
 - **Banner / clap name**: the CLI banner and the clap binary name now print `ignite` (they previously printed the legacy `rstart` / `rstartup` strings).
 

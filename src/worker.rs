@@ -20,6 +20,9 @@ pub fn spawn_background_task(tx: Sender<WorkerEvent>) {
     thread::spawn(move || {
         // Simulate a step-by-step task
         for i in 1..=20 {
+            if library::lifecycle::foreground::tui_bootstrap::is_app_shutting_down() {
+                break;
+            }
             thread::sleep(Duration::from_millis(150));
             let progress = i as f64 / 20.0;
             let _ = tx.send(WorkerEvent::Progress(progress));
