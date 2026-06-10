@@ -170,7 +170,7 @@ fn main() -> io::Result<()> {
                 if items.is_empty() {
                     println!("No startup items found.");
                 } else {
-                    println!("{:<30} {:<10} {:<15} {:<12} {}", "Name", "Status", "Type", "Impact", "Command");
+                    println!("{:<30} {:<10} {:<15} {:<12} Command", "Name", "Status", "Type", "Impact");
                     println!("{}", "-".repeat(100));
                     for item in items {
                         let status = if item.enabled { "Enabled" } else { "Disabled" };

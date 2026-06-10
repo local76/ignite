@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 use crate::backend::{StartupItem, get_user_startup_dir, get_system_startup_dir};
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, clippy::upper_case_acronyms)]
 #[repr(C)]
 struct SYSTEMTIME {
     wYear: u16,
@@ -219,7 +219,7 @@ pub fn restore_startup_item(entry: &BackupEntry) -> std::io::Result<()> {
                 dir.push(&entry.key_name);
                 let cmd_str = format!("@echo off\nstart \"\" \"{}\"", entry.command);
                 let mut path = dir.clone();
-                if path.extension().map_or(false, |ext| ext == "lnk") {
+                if path.extension().is_some_and(|ext| ext == "lnk") {
                     path.set_extension("bat");
                 }
                 std::fs::write(&path, cmd_str)?;
@@ -230,7 +230,7 @@ pub fn restore_startup_item(entry: &BackupEntry) -> std::io::Result<()> {
                 dir.push(&entry.key_name);
                 let cmd_str = format!("@echo off\nstart \"\" \"{}\"", entry.command);
                 let mut path = dir.clone();
-                if path.extension().map_or(false, |ext| ext == "lnk") {
+                if path.extension().is_some_and(|ext| ext == "lnk") {
                     path.set_extension("bat");
                 }
                 std::fs::write(&path, cmd_str)?;

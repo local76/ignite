@@ -224,12 +224,11 @@ impl App {
     }
 
     pub fn check_status_decay(&mut self) {
-        if let Some(t) = self.status_timer {
-            if t.elapsed() > Duration::from_secs(4) {
+        if let Some(t) = self.status_timer
+            && t.elapsed() > Duration::from_secs(4) {
                 self.status_msg = "Use arrow keys to browse startup entries. Press Space to toggle, Delete to remove. (h for help)".to_string();
                 self.status_timer = None;
             }
-        }
     }
 
     /// Checks the Windows Registry for theme/color changes and syncs TUI in real-time.

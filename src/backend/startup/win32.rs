@@ -123,8 +123,8 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() {
-                    if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if path.is_file()
+                    && let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
                         if filename.to_lowercase() == "desktop.ini" {
                             continue;
                         }
@@ -143,7 +143,6 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                             impact,
                         });
                     }
-                }
             }
         }
     }
@@ -154,8 +153,8 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() {
-                    if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if path.is_file()
+                    && let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
                         if filename.to_lowercase() == "desktop.ini" {
                             continue;
                         }
@@ -174,7 +173,6 @@ pub fn scan_startup_items() -> Vec<StartupItem> {
                             impact,
                         });
                     }
-                }
             }
         }
     }

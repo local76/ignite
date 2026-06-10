@@ -32,17 +32,16 @@ pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
             let mut clicked_btn = false;
 
             // Check Quit button
-            if let Some((btn_y, btn_start, btn_end)) = app.quit_btn_bounds {
-                if mouse.row == btn_y && mouse.column >= btn_start && mouse.column < btn_end {
+            if let Some((btn_y, btn_start, btn_end)) = app.quit_btn_bounds
+                && mouse.row == btn_y && mouse.column >= btn_start && mouse.column < btn_end {
                     app.should_quit = true;
                     clicked_btn = true;
                 }
-            }
 
             // Check Help button
-            if !clicked_btn {
-                if let Some((btn_y, btn_start, btn_end)) = app.help_btn_bounds {
-                    if mouse.row == btn_y && mouse.column >= btn_start && mouse.column < btn_end {
+            if !clicked_btn
+                && let Some((btn_y, btn_start, btn_end)) = app.help_btn_bounds
+                    && mouse.row == btn_y && mouse.column >= btn_start && mouse.column < btn_end {
                         app.show_help = !app.show_help;
                         app.set_status(if app.show_help {
                             "Help overlay active. Press ESC/q to close.".to_string()
@@ -51,8 +50,6 @@ pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
                         });
                         clicked_btn = true;
                     }
-                }
-            }
 
             // Check Click inside Backups Modal list
             if !clicked_btn && app.show_backups && !app.backup_db.entries.is_empty() {
@@ -114,13 +111,12 @@ pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
 
             if !clicked_btn {
                 if mouse.row <= 2 {
-                    if let Some(cursor_pos) = win32::query_cursor_pos() {
-                        if let Some(rect) = win32::get_window_rect() {
+                    if let Some(cursor_pos) = win32::query_cursor_pos()
+                        && let Some(rect) = win32::get_window_rect() {
                             app.drag_active = true;
                             app.drag_start_cursor = Some(cursor_pos);
                             app.drag_start_window = Some((rect.left, rect.top));
                         }
-                    }
                 } else {
                     app.selection_start = Some((mouse.column, mouse.row));
                     app.selection_end = Some((mouse.column, mouse.row));
@@ -130,13 +126,12 @@ pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
         }
         MouseEventKind::Drag(MouseButton::Left) => {
             if app.drag_active {
-                if let (Some(start_cursor), Some(start_window)) = (app.drag_start_cursor, app.drag_start_window) {
-                    if let Some(curr_cursor) = win32::query_cursor_pos() {
+                if let (Some(start_cursor), Some(start_window)) = (app.drag_start_cursor, app.drag_start_window)
+                    && let Some(curr_cursor) = win32::query_cursor_pos() {
                         let dx = curr_cursor.0 - start_cursor.0;
                         let dy = curr_cursor.1 - start_cursor.1;
                         win32::set_window_pos(start_window.0 + dx, start_window.1 + dy);
                     }
-                }
             } else if app.selection_start.is_some() {
                 app.selection_end = Some((mouse.column, mouse.row));
             }
@@ -164,15 +159,14 @@ pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
                 app.markdown_scroll = app.markdown_scroll.saturating_sub(3);
             }
         }
-        MouseEventKind::ScrollDown => {
-            if app.show_markdown.is_some() {
+        MouseEventKind::ScrollDown
+            if app.show_markdown.is_some() => {
                 let inner_h = ((term_h * 80) / 100).saturating_sub(2) as usize;
                 let max_scroll = app.markdown_lines.len().saturating_sub(inner_h);
                 if app.markdown_scroll < max_scroll {
                     app.markdown_scroll = (app.markdown_scroll + 3).min(max_scroll);
                 }
             }
-        }
         _ => {}
     }
 }
