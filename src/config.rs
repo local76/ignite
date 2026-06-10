@@ -38,6 +38,8 @@ impl AppConfig {
             let appdata = std::env::var("APPDATA").ok()?;
             Some(
                 std::path::PathBuf::from(appdata)
+                    .join("local76")
+                    .join("app")
                     .join("ignite")
                     .join("config.yaml"),
             )
@@ -52,7 +54,7 @@ impl AppConfig {
                         .map(|h| PathBuf::from(h).join(".config"))
                 })
                 .unwrap_or_else(|| PathBuf::from(".config"));
-            Some(base.join("ignite").join("config.yaml"))
+            Some(base.join("local76").join("app").join("ignite").join("config.yaml"))
         }
     }
 
