@@ -7,15 +7,14 @@ use std::{
 use crossterm::{
     event::{self, Event, KeyEventKind},
 };
+use library::lifecycle::background::file_log::{log_message, set_event_log_enabled, set_log_app_name};
 
 mod config;
-mod logger;
 mod backend;
 mod win32;
 mod app;
 mod ui;
 
-use logger::log_message;
 use app::App;
 
 pub const IGNITE_LOGO: &str = r"
@@ -107,7 +106,8 @@ fn main() -> io::Result<()> {
     let _hwnd = win32::hide_console_at_startup();
 
     // Initialize logging switch
-    logger::set_event_log_enabled(config.enable_event_log);
+    set_log_app_name("app/ignite");
+    set_event_log_enabled(config.enable_event_log);
     log_message(
         "START",
         &format!("Application initializing with config: {:?}", config),

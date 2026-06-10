@@ -562,7 +562,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "ignite"
-version = "2026.6.10"
+version = "2026.6.11"
 dependencies = [
  "crossterm",
  "embed-resource",
@@ -676,7 +676,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "library"
-version = "2026.6.10"
+version = "2026.6.11"
 dependencies = [
  "crossterm",
  "ratatui",

@@ -14,52 +14,35 @@ const CONTRIBUTING_CONTENT: &str = include_str!("../../CONTRIBUTING.md");
 pub fn handle_key(app: &mut App, key: KeyEvent) {
     // Markdown viewer intercept keys
     if app.show_markdown.is_some() {
-        match key.code {
-            KeyCode::Esc | KeyCode::Char('q') => {
-                app.show_markdown = None;
-                app.set_status("Document viewer closed.".to_string());
-            }
-            KeyCode::F(1) => {
-                app.open_embedded_markdown("README.md", README_CONTENT);
-            }
-            KeyCode::F(2) => {
-                app.open_embedded_markdown("SUPPORT.md", SUPPORT_CONTENT);
-            }
-            KeyCode::F(3) => {
-                app.open_embedded_markdown("LICENSE.md", LICENSE_CONTENT);
-            }
-            KeyCode::F(4) => {
-                app.open_embedded_markdown("COPYRIGHT.md", COPYRIGHT_CONTENT);
-            }
-            KeyCode::F(5) => {
-                app.open_embedded_markdown("PRIVACY.md", PRIVACY_CONTENT);
-            }
-            KeyCode::F(6) => {
-                app.open_embedded_markdown("SECURITY.md", SECURITY_CONTENT);
-            }
-            KeyCode::F(7) => {
-                app.open_embedded_markdown("CONTRIBUTING.md", CONTRIBUTING_CONTENT);
-            }
-            KeyCode::Up => {
-                app.markdown_scroll = app.markdown_scroll.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                if app.markdown_scroll + 10 < app.markdown_lines.len() {
-                    app.markdown_scroll += 1;
-                }
-            }
-            KeyCode::PageUp => {
-                app.markdown_scroll = app.markdown_scroll.saturating_sub(15);
-            }
-            KeyCode::PageDown => {
-                if app.markdown_scroll + 15 < app.markdown_lines.len() {
-                    app.markdown_scroll += 15;
-                } else {
-                    app.markdown_scroll =
-                        app.markdown_lines.len().saturating_sub(10);
-                }
-            }
-            _ => {}
+        // F1..F7 -> swap to a different doc
+        if let Some(name) = library::apps::chrome::open_embedded_markdown(key.code) {
+            let content = match name {
+                "README.md" => README_CONTENT,
+                "SUPPORT.md" => SUPPORT_CONTENT,
+                "LICENSE.md" => LICENSE_CONTENT,
+                "COPYRIGHT.md" => COPYRIGHT_CONTENT,
+                "PRIVACY.md" => PRIVACY_CONTENT,
+                "SECURITY.md" => SECURITY_CONTENT,
+                "CONTRIBUTING.md" => CONTRIBUTING_CONTENT,
+                _ => "",
+            };
+            app.open_embedded_markdown(name, content);
+            return;
+        }
+        // Up/Down/PageUp/PageDown -> scroll the markdown
+        if let Some(new_scroll) = library::apps::chrome::scroll_for_key(
+            key.code,
+            app.markdown_scroll,
+            app.markdown_lines.len(),
+            10,
+        ) {
+            app.markdown_scroll = new_scroll;
+            return;
+        }
+        // Esc/q close the viewer
+        if matches!(key.code, KeyCode::Esc | KeyCode::Char('q')) {
+            app.show_markdown = None;
+            app.set_status("Document viewer closed.".to_string());
         }
         return;
     }
@@ -173,26 +156,22 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
                 }
             }
         }
-        KeyCode::F(1) => {
-            app.open_embedded_markdown("README.md", README_CONTENT);
-        }
-        KeyCode::F(2) => {
-            app.open_embedded_markdown("SUPPORT.md", SUPPORT_CONTENT);
-        }
-        KeyCode::F(3) => {
-            app.open_embedded_markdown("LICENSE.md", LICENSE_CONTENT);
-        }
-        KeyCode::F(4) => {
-            app.open_embedded_markdown("COPYRIGHT.md", COPYRIGHT_CONTENT);
-        }
-        KeyCode::F(5) => {
-            app.open_embedded_markdown("PRIVACY.md", PRIVACY_CONTENT);
-        }
-        KeyCode::F(6) => {
-            app.open_embedded_markdown("SECURITY.md", SECURITY_CONTENT);
-        }
-        KeyCode::F(7) => {
-            app.open_embedded_markdown("CONTRIBUTING.md", CONTRIBUTING_CONTENT);
+        KeyCode::F(1..=7) => {
+            // F1..F7 -> embedded docs. Delegated to library's chrome::open_embedded_markdown
+            // which returns the filename if the key is an F1..F7 doc key.
+            if let Some(name) = library::apps::chrome::open_embedded_markdown(key.code) {
+                let content = match name {
+                    "README.md" => README_CONTENT,
+                    "SUPPORT.md" => SUPPORT_CONTENT,
+                    "LICENSE.md" => LICENSE_CONTENT,
+                    "COPYRIGHT.md" => COPYRIGHT_CONTENT,
+                    "PRIVACY.md" => PRIVACY_CONTENT,
+                    "SECURITY.md" => SECURITY_CONTENT,
+                    "CONTRIBUTING.md" => CONTRIBUTING_CONTENT,
+                    _ => "",
+                };
+                app.open_embedded_markdown(name, content);
+            }
         }
         KeyCode::Char('h') => {
             app.show_help = true;

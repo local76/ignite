@@ -3,7 +3,7 @@ use ratatui::style::Color;
 use ratatui::text::Line;
 
 use crate::config;
-use crate::logger::log_message;
+use library::lifecycle::background::file_log::log_message;
 use crate::backend;
 use crate::win32;
 
