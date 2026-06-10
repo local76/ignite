@@ -1,9 +1,9 @@
-use std::time::{Duration, Instant};
+﻿use std::time::{Duration, Instant};
 use ratatui::style::Color;
 use ratatui::text::Line;
 
 use crate::config;
-use library::lifecycle::background::file_log::log_message;
+use library::apps::file_log::log_message;
 use crate::backend;
 use crate::win32;
 
@@ -13,7 +13,7 @@ pub mod mouse;
 pub use keys::handle_key;
 pub use mouse::handle_mouse;
 
-pub use library::interface::app::design::prelude::{ThemeColors, get_theme};
+pub use library::ui::theme::{ThemeColors, get_theme};
 
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

@@ -1,6 +1,6 @@
-//! `ignite --doctor` diagnostic command.
+﻿//! `ignite --doctor` diagnostic command.
 
-use library::platform::native::sys_info::{GlyphMap, query_os_version};
+use library::toolkit::sys_info::{GlyphMap, query_os_version};
 
 pub fn run() {
     println!("===================================================");
