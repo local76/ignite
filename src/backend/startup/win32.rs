@@ -210,7 +210,12 @@ pub fn toggle_startup_item(item: &mut StartupItem) -> std::io::Result<()> {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder";
             library::toolkit::registry::write_binary(HKEY_LOCAL_MACHINE, path, &item.key_name, &val)?;
         }
-        _ => {}
+        _ => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("unknown startup location_type: {}", item.location_type),
+            ));
+        }
     }
     item.enabled = enabled;
     Ok(())
@@ -278,7 +283,12 @@ pub fn delete_startup_item(item: &StartupItem) -> std::io::Result<()> {
                 let _ = app_key.delete_value(&item.key_name);
             }
         }
-        _ => {}
+        _ => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("unknown startup location_type: {}", item.location_type),
+            ));
+        }
     }
     Ok(())
 }

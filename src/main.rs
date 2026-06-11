@@ -8,6 +8,7 @@ use crossterm::{
     event::{self, Event, KeyEventKind},
 };
 use library::apps::file_log::{log_message, set_event_log_enabled, set_log_app_name};
+use library::apps::bootstrap::Config as BootstrapConfig;
 
 mod config;
 mod backend;
@@ -115,11 +116,11 @@ fn main() -> io::Result<()> {
     );
 
     // Bootstrap terminal via shared library utility
-    let mut tui_config = library::apps::tui_bootstrap::TuiBootstrapConfig::new("ignite");
+    let mut tui_config = BootstrapConfig::new("ignite");
     tui_config.borderless = config.enable_borderless;
     tui_config.size = (100, 35);
 
-    let (mut terminal, _guards) = library::apps::tui_bootstrap::bootstrap_tui(tui_config)?;
+    let (mut terminal, _guards) = library::apps::bootstrap::init(tui_config)?;
 
     #[cfg(windows)]
     win32::show_console_window();
@@ -131,7 +132,7 @@ fn main() -> io::Result<()> {
     log_message("RUN", "Entering main event loop");
 
     while !app.should_quit {
-        if library::apps::tui_bootstrap::is_app_shutting_down() {
+        if library::apps::bootstrap::is_app_shutting_down() {
             break;
         }
         app.check_status_decay();
@@ -173,7 +174,7 @@ fn main() -> io::Result<()> {
 
     log_message("EXIT", "Shutting down cleanly.");
 
-    library::apps::tui_bootstrap::shutdown_tui(&mut terminal)?;
+    library::apps::bootstrap::shutdown(&mut terminal)?;
     Ok(())
 }
 

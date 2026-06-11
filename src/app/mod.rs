@@ -57,7 +57,7 @@ pub struct App {
     pub network_rates: Vec<(String, u64, u64)>,
     pub last_metrics_refresh: Instant,
 
-    // TUI Markdown Viewer modal status
+    // Console Markdown Viewer modal status
     pub show_markdown: Option<String>,
     pub markdown_lines: Vec<Line<'static>>,
     pub markdown_scroll: usize,
@@ -214,7 +214,7 @@ impl App {
         }
     }
 
-    /// Parse and display an embedded markdown document for dynamic in-TUI modal rendering.
+    /// Parse and display an embedded markdown document for dynamic console modal rendering.
     pub fn open_embedded_markdown(&mut self, title: &str, content: &str) {
         self.markdown_lines =
             crate::ui::parse_markdown_to_lines(content, &get_theme(self.dark_mode, self.accent_color));
@@ -231,7 +231,7 @@ impl App {
             }
     }
 
-    /// Checks the Windows Registry for theme/color changes and syncs TUI in real-time.
+    /// Checks the Windows Registry for theme/color changes and syncs console in real-time.
     pub fn sync_theme_if_needed(&mut self, config: &config::AppConfig) {
         if self.last_theme_check.elapsed() > Duration::from_millis(2500) {
             self.last_theme_check = Instant::now();
