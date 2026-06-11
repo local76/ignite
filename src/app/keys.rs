@@ -16,15 +16,23 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
     if app.show_markdown.is_some() {
         // F1..F7 -> swap to a different doc
         if let Some(name) = library::apps::chrome::open_embedded_markdown(key.code) {
-            let content = match name {
-                "README.md" => README_CONTENT,
-                "SUPPORT.md" => SUPPORT_CONTENT,
-                "LICENSE.md" => LICENSE_CONTENT,
-                "COPYRIGHT.md" => COPYRIGHT_CONTENT,
-                "PRIVACY.md" => PRIVACY_CONTENT,
-                "SECURITY.md" => SECURITY_CONTENT,
-                "CONTRIBUTING.md" => CONTRIBUTING_CONTENT,
-                _ => "",
+            // Validate the name against the canonical DOC_FILES list before
+            // matching. This makes the per-app content lookup explicit
+            // rather than implicit. The library's `doc()` is the single
+            // source of truth for which doc names exist. (Drift fix for B7.)
+            let content = if library::apps::chrome::doc(name).is_some() {
+                match name {
+                    "README.md" => README_CONTENT,
+                    "SUPPORT.md" => SUPPORT_CONTENT,
+                    "LICENSE.md" => LICENSE_CONTENT,
+                    "COPYRIGHT.md" => COPYRIGHT_CONTENT,
+                    "PRIVACY.md" => PRIVACY_CONTENT,
+                    "SECURITY.md" => SECURITY_CONTENT,
+                    "CONTRIBUTING.md" => CONTRIBUTING_CONTENT,
+                    _ => "",
+                }
+            } else {
+                ""
             };
             app.open_embedded_markdown(name, content);
             return;
