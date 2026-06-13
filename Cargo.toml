@@ -14,6 +14,7 @@ crossterm = "0.28"
 embed-resource = "2"
 
 [package.metadata.deb]
+name = "app-ignite"
 maintainer = "Jeryd <jerydleuck@gmail.com>"
 assets = [
     ["target/release/ignite", "usr/bin/ignite", "755"],
