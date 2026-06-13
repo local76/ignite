@@ -4,7 +4,7 @@
 
 use std::io;
 
-use library::toolkit::config::{AppConfig as GenericAppConfig, ConfigFields};
+use crate::backend::config::{AppConfig as GenericAppConfig, ConfigFields};
 
 pub const APP_NAME: &str = "app/ignite";
 pub const CONFIG_FILE: &str = "config.yaml";
@@ -81,3 +81,7 @@ impl AppConfig {
         GenericAppConfig { fields: self.clone() }.save(APP_NAME, CONFIG_FILE, CONFIG_HEADER)
     }
 }
+
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod tests;

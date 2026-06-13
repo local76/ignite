@@ -15,12 +15,12 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
     // Markdown viewer intercept keys
     if app.show_markdown.is_some() {
         // F1..F7 -> swap to a different doc
-        if let Some(name) = library::apps::chrome::open_embedded_markdown(key.code) {
+        if let Some(name) = crate::chrome::open_embedded_markdown(key.code) {
             // Validate the name against the canonical DOC_FILES list before
             // matching. This makes the per-app content lookup explicit
             // rather than implicit. The library's `doc()` is the single
             // source of truth for which doc names exist. (Drift fix for B7.)
-            let content = if library::apps::chrome::doc(name).is_some() {
+            let content = if crate::chrome::doc(name).is_some() {
                 match name {
                     "README.md" => README_CONTENT,
                     "SUPPORT.md" => SUPPORT_CONTENT,
@@ -38,7 +38,7 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
             return;
         }
         // Up/Down/PageUp/PageDown -> scroll the markdown
-        if let Some(new_scroll) = library::apps::chrome::scroll_for_key(
+        if let Some(new_scroll) = crate::chrome::scroll_for_key(
             key.code,
             app.markdown_scroll,
             app.markdown_lines.len(),
@@ -167,7 +167,7 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
         KeyCode::F(1..=7) => {
             // F1..F7 -> embedded docs. Delegated to library's chrome::open_embedded_markdown
             // which returns the filename if the key is an F1..F7 doc key.
-            if let Some(name) = library::apps::chrome::open_embedded_markdown(key.code) {
+            if let Some(name) = crate::chrome::open_embedded_markdown(key.code) {
                 let content = match name {
                     "README.md" => README_CONTENT,
                     "SUPPORT.md" => SUPPORT_CONTENT,

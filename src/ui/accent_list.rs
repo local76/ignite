@@ -4,7 +4,6 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Paragraph, Block, Widget},
 };
-use library::ui::colors::AccentColors;
 
 /// A custom selection list highlighted with the Windows DWM accent color.
 /// Supports a `focused` flag so the bright accent bullet + bold is only used
@@ -42,18 +41,6 @@ impl<'a> AccentList<'a> {
             bullet_char,
             focused,
         }
-    }
-
-    /// First-class constructor using the bundled `AccentColors` (recommended).
-    #[allow(dead_code)]
-    pub fn new_with_colors(
-        items: Vec<&'a str>,
-        selected_index: usize,
-        colors: &AccentColors,
-        bullet_char: &'a str,
-        focused: bool,
-    ) -> Self {
-        Self::new(items, selected_index, colors.accent, colors.dim, colors.text, bullet_char, focused)
     }
 }
 

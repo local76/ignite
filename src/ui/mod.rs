@@ -10,6 +10,12 @@ pub mod overlays;
 pub mod widgets;
 pub mod text_format;
 pub mod accent_list;
+pub mod layout_helpers;
+pub mod markdown;
+pub mod text;
+pub mod theme;
+pub mod banner_footer;
+pub mod markdown_viewer;
 
 pub use text_format::{centered_rect, parse_markdown_to_lines};
 
@@ -69,7 +75,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
         .split(size);
 
     // 1. Draw Title Banner
-    widgets::draw_title_banner(f, app, chunks[0], &theme);
+    banner_footer::draw_title_banner(f, app, chunks[0], &theme);
 
     // 2. Main Content splitting vertically
     let content_chunks = Layout::default()
@@ -82,7 +88,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
     widgets::draw_startup_details(f, app, content_chunks[1], &theme);
 
     // 3. Status Bar Footer
-    widgets::draw_status_bar(f, app, chunks[2], &theme);
+    banner_footer::draw_status_bar(f, app, chunks[2], &theme);
 
     // 4. Help Overlay Modal
     if app.show_help {
@@ -91,7 +97,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
 
     // 5. Scrollable Markdown Document Viewer Modal
     if app.show_markdown.is_some() {
-        overlays::draw_markdown_viewer(f, app, &theme);
+        markdown_viewer::draw_markdown_viewer(f, app, &theme);
     }
 
     // 5.5. Restore Backups Modal

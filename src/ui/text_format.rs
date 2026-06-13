@@ -1,11 +1,11 @@
-﻿use ratatui::style::Style;
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
 // Re-export shared implementations from library design system to prevent code duplication.
-#[allow(unused_imports)]
-pub use library::ui::layout::{centered_rect, format_help_row};
-pub use library::ui::markdown::parse_markdown_to_lines;
-pub use library::ui::text::wrap_text;
+pub use crate::ui::layout_helpers::{centered_rect, format_help_row};
+pub use crate::ui::markdown::parse_markdown_to_lines;
+#[cfg(test)]
+pub use crate::ui::text::wrap_text;
 
 pub fn wrap_text_aligned(text: &str, width: usize) -> Vec<String> {
     if width == 0 {

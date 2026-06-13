@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Ignite
+Comment=TUI Startup Manager
+Exec=ignite
+Icon=ignite
+Terminal=true
+Categories=System;Utility;

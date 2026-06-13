@@ -1,19 +1,19 @@
-﻿use std::time::{Duration, Instant};
+use std::time::{Duration, Instant};
 use ratatui::style::Color;
 use ratatui::text::Line;
 
 use crate::config;
-use library::apps::file_log::log_message;
 use crate::backend;
 use crate::win32;
 
 pub mod keys;
 pub mod mouse;
+mod actions;
 
 pub use keys::handle_key;
 pub use mouse::handle_mouse;
 
-pub use library::ui::theme::{ThemeColors, get_theme};
+pub use crate::ui::theme::{ThemeColors, get_theme};
 
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -51,8 +51,8 @@ pub struct App {
     pub last_power_check: Instant,
 
     // Native Windows System diagnostics structures
-    pub sys: sysinfo::System,
-    pub networks: sysinfo::Networks,
+    pub sys: crate::backend::sysinfo_shim::System,
+    pub networks: crate::backend::sysinfo_shim::Networks,
     pub top_processes: Vec<(u32, String, f32, u64)>,
     pub network_rates: Vec<(String, u64, u64)>,
     pub last_metrics_refresh: Instant,
@@ -92,12 +92,11 @@ impl App {
         } else {
             false
         };
-        let mut sys = sysinfo::System::new_all();
+        let mut sys = crate::backend::sysinfo_shim::System::new_all();
         sys.refresh_all();
-        let networks = sysinfo::Networks::new_with_refreshed_list();
-        let username = std::env::var("USERNAME")
-            .unwrap_or_else(|_| std::env::var("USER").unwrap_or_else(|_| "user".to_string()));
-        let host_name = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "localhost".to_string());
+        let networks = crate::backend::sysinfo_shim::Networks::new_with_refreshed_list();
+        let username = crate::backend::identity::username();
+        let host_name = crate::backend::identity::hostname();
         let os_version = win32::query_os_version();
         Self {
             status_msg:
@@ -145,40 +144,6 @@ impl App {
         }
     }
 
-    pub fn set_status(&mut self, msg: String) {
-        self.status_msg = msg;
-        self.status_timer = Some(Instant::now());
-        log_message("INFO", &format!("Status updated: {}", self.status_msg));
-    }
-
-    pub fn select_next_startup(&mut self) {
-        if self.startup_items.is_empty() {
-            self.selected_startup = 0;
-            return;
-        }
-        self.selected_startup = (self.selected_startup + 1) % self.startup_items.len();
-        self.set_status(format!(
-            "Selected item: {}",
-            self.startup_items[self.selected_startup].name
-        ));
-    }
-
-    pub fn select_prev_startup(&mut self) {
-        if self.startup_items.is_empty() {
-            self.selected_startup = 0;
-            return;
-        }
-        if self.selected_startup == 0 {
-            self.selected_startup = self.startup_items.len() - 1;
-        } else {
-            self.selected_startup -= 1;
-        }
-        self.set_status(format!(
-            "Selected item: {}",
-            self.startup_items[self.selected_startup].name
-        ));
-    }
-
     /// Refresh process list and network adapters data dynamically.
     pub fn refresh_system_metrics(&mut self) {
         if self.last_metrics_refresh.elapsed() > Duration::from_millis(1500) {
@@ -212,89 +177,5 @@ impl App {
             }
             self.network_rates = rates;
         }
-    }
-
-    /// Parse and display an embedded markdown document for dynamic console modal rendering.
-    pub fn open_embedded_markdown(&mut self, title: &str, content: &str) {
-        self.markdown_lines =
-            crate::ui::parse_markdown_to_lines(content, &get_theme(self.dark_mode, self.accent_color));
-        self.show_markdown = Some(title.to_string());
-        self.markdown_scroll = 0;
-        self.set_status(format!("Opened document: {}", title));
-    }
-
-    pub fn check_status_decay(&mut self) {
-        if let Some(t) = self.status_timer
-            && t.elapsed() > Duration::from_secs(4) {
-                self.status_msg = "Use arrow keys to browse startup entries. Press Space to toggle, Delete to remove. (h for help)".to_string();
-                self.status_timer = None;
-            }
-    }
-
-    /// Checks the Windows Registry for theme/color changes and syncs console in real-time.
-    pub fn sync_theme_if_needed(&mut self, config: &config::AppConfig) {
-        if self.last_theme_check.elapsed() > Duration::from_millis(2500) {
-            self.last_theme_check = Instant::now();
-            let current_dark = match config.theme_mode.as_str() {
-                "dark" => true,
-                "light" => false,
-                _ => win32::query_dark_mode(),
-            };
-            let current_accent = win32::get_dwm_accent_color();
-            if current_dark != self.dark_mode || current_accent != self.accent_color {
-                self.dark_mode = current_dark;
-                self.accent_color = current_accent;
-                log_message(
-                    "THEME_SYNC",
-                    &format!(
-                        "Color theme updated. Dark Mode: {}, Accent: {:?}",
-                        current_dark, current_accent
-                    ),
-                );
-            }
-        }
-    }
-
-    /// Checks system power status periodically and adjusts throttling state.
-    pub fn sync_power_status_if_needed(&mut self) {
-        if self.last_power_check.elapsed() > Duration::from_millis(5000) {
-            self.last_power_check = Instant::now();
-            if let Some(power) = win32::query_power_status() {
-                let current_on_battery = !power.ac_online;
-                if current_on_battery != self.on_battery {
-                    self.on_battery = current_on_battery;
-                    let state = if current_on_battery {
-                        "Battery (Power-Saving Throttling Enabled)"
-                    } else {
-                        "AC Power (Full Speed)"
-                    };
-                    log_message(
-                        "POWER_SYNC",
-                        &format!("Power source changed. Status: {}", state),
-                    );
-                    self.set_status(format!("Power Source Changed: {}", state));
-                }
-            }
-        }
-    }
-
-    /// Collect the raw text format of the currently selected diagnostic screen for clipboard storage.
-    pub fn get_diagnostic_details_text(&self) -> String {
-        let mut details = String::new();
-        if self.startup_items.is_empty() {
-            details.push_str("No startup items detected.\n");
-            return details;
-        }
-        if let Some(item) = self.startup_items.get(self.selected_startup) {
-            details.push_str("--- Startup Application Specifications ---\n");
-            details.push_str(&format!("Name:          {}\n", item.name));
-            details.push_str(&format!("Command:       {}\n", item.command));
-            details.push_str(&format!("Status:        {}\n", if item.enabled { "Enabled" } else { "Disabled" }));
-            details.push_str(&format!("Location Type: {}\n", item.location_type));
-            details.push_str(&format!("Location Path: {}\n", item.location_path));
-            details.push_str(&format!("Config Key:    {}\n", item.key_name));
-            details.push_str(&format!("Startup Impact: {}\n", item.impact));
-        }
-        details
     }
 }

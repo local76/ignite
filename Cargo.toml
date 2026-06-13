@@ -6,17 +6,11 @@ edition = "2024"
 [dependencies]
 ratatui = { version = "0.30", default-features = false, features = ["termwiz"] }
 crossterm = "0.28"
-sysinfo = "0.30"
-library = { path = "../library", features = ["widgets", "sys-info", "window", "clipboard", "scenes", "chrome"] }
 
-[target.'cfg(windows)'.dependencies]
-winreg = "0.56.0"
-windows = { version = "0.52.0", features = [
-    "Data_Xml_Dom",
-    "UI_Notifications",
-] }
 
-[target.'cfg(windows)'.build-dependencies]
+
+
+[build-dependencies]
 embed-resource = "2"
 
 [package.metadata.deb]
@@ -27,4 +21,9 @@ assets = [
     ["packaging/desktop/ignite.desktop", "usr/share/applications/ignite.desktop", "644"],
 ]
 
-
+[profile.release]
+opt-level = "z"          # Optimize for size
+lto = true               # Enable Link Time Optimization
+codegen-units = 1        # Reduce codegen units to maximize size reduction
+panic = "abort"          # Remove panic unwinding code
+strip = true             # Strip symbols and debuginfo

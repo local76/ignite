@@ -1,6 +1,6 @@
-﻿//! `ignite --doctor` diagnostic command.
+//! `ignite --doctor` diagnostic command.
 
-use library::toolkit::sys_info::{GlyphMap, query_os_version};
+use crate::backend::sys_info::{GlyphMap, query_os_version};
 
 pub fn run() {
     println!("===================================================");
@@ -17,7 +17,7 @@ pub fn run() {
     println!("\nChecking Registry Startup Keys Access...");
     #[cfg(windows)]
     {
-        use winreg::RegKey;
+        use crate::backend::registry::RegKey;
         use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
         
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);

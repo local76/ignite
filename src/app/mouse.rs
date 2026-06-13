@@ -1,9 +1,9 @@
-﻿use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::Block;
 use crate::app::App;
 use crate::win32;
-use library::ui::layout::centered_rect;
+use crate::ui::layout_helpers::centered_rect;
 
 pub fn handle_mouse(app: &mut App, mouse: MouseEvent) {
     let (term_w, term_h) = crossterm::terminal::size().unwrap_or((100, 35));
