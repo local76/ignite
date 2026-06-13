@@ -28,3 +28,17 @@ lto = true               # Enable Link Time Optimization
 codegen-units = 1        # Reduce codegen units to maximize size reduction
 panic = "abort"          # Remove panic unwinding code
 strip = true             # Strip symbols and debuginfo
+
+[package.metadata.generate-rpm]
+name = "app-ignite"
+version = "2026.6.10-1"
+release = "1"
+arch = "x86_64"
+summary = "app-ignite package"
+description = "app-ignite package"
+license = "MIT"
+assets = [
+    { source = "target/release/ignite", dest = "/usr/bin/ignite", mode = "755" },
+    { source = "assets/brand/app_icon.png", dest = "/usr/share/pixmaps/ignite.png", mode = "644" },
+    { source = "packaging/desktop/ignite.desktop", dest = "/usr/share/applications/ignite.desktop", mode = "644" }
+]
