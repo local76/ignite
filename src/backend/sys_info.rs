@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use crate::backend::shell_terminal::query_shell_and_terminal;
+pub use crate::backend::shell_terminal::query_shell_and_terminal;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PowerStatus {
@@ -67,7 +67,7 @@ pub fn query_local_ip() -> Option<String> {
 mod win_impl;
 
 #[cfg(target_os = "windows")]
-pub use win_impl::*;
+use win_impl as platform_impl;
 
 #[cfg(not(target_os = "windows"))]
 mod fallback_impl {
@@ -92,7 +92,7 @@ mod fallback_impl {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub use fallback_impl::*;
+use fallback_impl as platform_impl;
 
 #[derive(Debug, Clone, Copy)]
 pub struct GlyphMap {
@@ -157,4 +157,121 @@ impl GlyphMap {
             }
         }
     }
+}
+
+fn get_global_theme_path() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        std::env::var("APPDATA").ok().map(|appdata| {
+            std::path::PathBuf::from(appdata)
+                .join("local76")
+                .join("theme.yaml")
+        })
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::env::var("XDG_CONFIG_HOME")
+            .ok()
+            .map(std::path::PathBuf::from)
+            .or_else(|| {
+                std::env::var("HOME").ok().map(|home| {
+                    std::path::PathBuf::from(home).join(".config")
+                })
+            })
+            .map(|b| b.join("local76").join("theme.yaml"))
+    }
+}
+
+static GLOBAL_THEME_CACHE: std::sync::OnceLock<std::sync::Mutex<(Option<(Option<(u8, u8, u8)>, Option<bool>)>, std::time::Instant)>> = std::sync::OnceLock::new();
+
+pub fn load_global_theme() -> (Option<(u8, u8, u8)>, Option<bool>) {
+    let cache_mutex = GLOBAL_THEME_CACHE.get_or_init(|| std::sync::Mutex::new((None, std::time::Instant::now())));
+    let mut cache = cache_mutex.lock().unwrap();
+    if let Some(ref val) = cache.0 {
+        if cache.1.elapsed() < std::time::Duration::from_secs(1) {
+            return val.clone();
+        }
+    }
+    let val = load_global_theme_raw();
+    cache.0 = Some(val.clone());
+    cache.1 = std::time::Instant::now();
+    val
+}
+
+fn load_global_theme_raw() -> (Option<(u8, u8, u8)>, Option<bool>) {
+    if let Some(path) = get_global_theme_path() {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let mut accent = None;
+            let mut dark = None;
+            for line in content.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                if let Some(idx) = line.find(':') {
+                    let key = line[..idx].trim();
+                    let val = line[idx + 1..].trim().trim_matches('"').trim_matches('\'');
+                    match key {
+                        "accent_color" => {
+                            if !val.is_empty() && val != "none" {
+                                if val.starts_with('#') && val.len() == 7 {
+                                    let r = u8::from_str_radix(&val[1..3], 16).unwrap_or(0);
+                                    let g = u8::from_str_radix(&val[3..5], 16).unwrap_or(245);
+                                    let b = u8::from_str_radix(&val[5..7], 16).unwrap_or(255);
+                                    accent = Some((r, g, b));
+                                }
+                            }
+                        }
+                        "dark_mode" | "is_dark_mode" => {
+                            if let Ok(b) = val.parse::<bool>() {
+                                dark = Some(b);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            return (accent, dark);
+        }
+    }
+    (None, None)
+}
+
+pub fn query_accent_color() -> (u8, u8, u8) {
+    if let (Some(accent), _) = load_global_theme() {
+        return accent;
+    }
+    platform_impl::query_accent_color()
+}
+
+pub fn get_win_accent_color_hex() -> String {
+    let (r, g, b) = query_accent_color();
+    format!("#{:02X}{:02X}{:02X}", r, g, b)
+}
+
+pub fn query_dark_mode() -> bool {
+    if let (_, Some(dark)) = load_global_theme() {
+        return dark;
+    }
+    platform_impl::query_dark_mode()
+}
+
+pub use platform_exports::*;
+
+#[cfg(target_os = "windows")]
+#[allow(unused_imports)]
+mod platform_exports {
+    pub use super::platform_impl::{
+        query_high_contrast, query_os_version, query_power_status,
+        query_bios_info, query_gpu_names, get_local_time_string,
+    };
+}
+
+#[cfg(not(target_os = "windows"))]
+#[allow(unused_imports)]
+mod platform_exports {
+    pub use super::platform_impl::{
+        query_high_contrast, query_os_version, query_power_status,
+        query_bios_info, query_gpu_names, get_local_time_string,
+    };
 }

@@ -3,7 +3,7 @@
 //! **Taxonomy Classification**: Platform (Startup / Windows Native).
 
 use std::path::PathBuf;
-use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+use crate::backend::registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 
 #[derive(Debug, Clone)]
 pub struct StartupItem {

@@ -16,6 +16,8 @@ use windows_sys::Win32::System::SystemInformation::*;
 use windows_sys::Win32::System::ProcessStatus::*;
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Foundation::*;
+#[cfg(target_os = "windows")]
+use crate::backend::registry::HKEY_LOCAL_MACHINE;
 
 #[cfg(target_os = "linux")]
 #[repr(C)]
@@ -114,7 +116,7 @@ impl Process {
             use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
             use windows_sys::Win32::Foundation::CloseHandle;
             let h_proc = OpenProcess(PROCESS_TERMINATE, 0, self.pid.0);
-            if h_proc != 0 {
+            if !h_proc.is_null() {
                 let res = TerminateProcess(h_proc, 1);
                 CloseHandle(h_proc);
                 res != 0
@@ -405,7 +407,7 @@ impl System {
                         let mut exe_path = None;
                         
                         let h_proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, 0, pid);
-                        if h_proc != 0 {
+                        if !h_proc.is_null() {
                             let mut pmc = PROCESS_MEMORY_COUNTERS {
                                 cb: std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
                                 PageFaultCount: 0,
@@ -845,9 +847,9 @@ impl Networks {
                     let tx = row.OutOctets;
                     
                     let mut mac = [0u8; 6];
-                    let mac_len = row.PhysAddrLength as usize;
+                    let mac_len = row.PhysicalAddressLength as usize;
                     if mac_len >= 6 {
-                        mac.copy_from_slice(&row.PhysAddr[..6]);
+                        mac.copy_from_slice(&row.PhysicalAddress[..6]);
                     }
                     
                     let prev = self.map.get(&desc);

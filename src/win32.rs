@@ -4,7 +4,7 @@ pub use crate::clipboard::copy_text_to_clipboard;
 pub use crate::backend::sys_info::{
     query_dark_mode, query_os_version, query_power_status, GlyphMap,
 };
-pub use win32_relaunch::relaunch_in_conhost_if_needed;
+pub use win32_relaunch::{relaunch_in_conhost_if_needed, hide_console_at_startup};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(C)]

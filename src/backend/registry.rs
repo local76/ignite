@@ -73,7 +73,7 @@ impl RegKey {
         #[cfg(target_os = "windows")]
         unsafe {
             let path_w = to_utf16(path);
-            let mut subkey: HKEY = 0;
+            let mut subkey: HKEY = std::ptr::null_mut();
             let res = RegOpenKeyExW(self.hkey, path_w.as_ptr(), 0, _flags, &mut subkey);
             if res == 0 {
                 Ok(RegKey { hkey: subkey, owned: true })
@@ -92,7 +92,7 @@ impl RegKey {
         #[cfg(target_os = "windows")]
         unsafe {
             let path_w = to_utf16(path);
-            let mut subkey: HKEY = 0;
+            let mut subkey: HKEY = std::ptr::null_mut();
             let mut disp: u32 = 0;
             let res = RegCreateKeyExW(
                 self.hkey,
@@ -227,7 +227,7 @@ impl RegKey {
 impl Drop for RegKey {
     fn drop(&mut self) {
         #[cfg(target_os = "windows")]
-        if self.owned && self.hkey != 0 {
+        if self.owned && self.hkey != std::ptr::null_mut() {
             unsafe {
                 RegCloseKey(self.hkey);
             }

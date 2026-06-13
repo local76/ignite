@@ -494,6 +494,7 @@ dependencies = [
  "crossterm",
  "embed-resource",
  "ratatui",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

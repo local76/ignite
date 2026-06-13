@@ -3,7 +3,7 @@
 //! **Taxonomy Classification**: Platform (Startup / Windows Backup).
 
 use std::path::PathBuf;
-use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+use crate::backend::registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 use crate::backend::{StartupItem, get_user_startup_dir, get_system_startup_dir};
 
 #[allow(non_snake_case, clippy::upper_case_acronyms)]

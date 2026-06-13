@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+use crate::backend::registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_WRITE, RegKey};
 use crate::backend::startup::win32::{StartupItem, get_user_startup_dir, get_system_startup_dir};
 
 /// Toggle enabled/disabled status of a startup item.
@@ -48,34 +48,34 @@ pub fn delete_startup_item(item: &StartupItem) -> std::io::Result<()> {
     match item.location_type.as_str() {
         "Registry (User)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-            let root = winreg::RegKey::predef(HKEY_CURRENT_USER);
-            let subkey = root.open_subkey_with_flags(path, winreg::enums::KEY_WRITE)?;
+            let root = RegKey::predef(HKEY_CURRENT_USER);
+            let subkey = root.open_subkey_with_flags(path, KEY_WRITE)?;
             subkey.delete_value(&item.key_name)?;
 
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-            if let Ok(app_key) = root.open_subkey_with_flags(app_path, winreg::enums::KEY_WRITE) {
+            if let Ok(app_key) = root.open_subkey_with_flags(app_path, KEY_WRITE) {
                 let _ = app_key.delete_value(&item.key_name);
             }
         }
         "Registry (System)" => {
             let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-            let root = winreg::RegKey::predef(HKEY_LOCAL_MACHINE);
-            let subkey = root.open_subkey_with_flags(path, winreg::enums::KEY_WRITE)?;
+            let root = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let subkey = root.open_subkey_with_flags(path, KEY_WRITE)?;
             subkey.delete_value(&item.key_name)?;
 
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-            if let Ok(app_key) = root.open_subkey_with_flags(app_path, winreg::enums::KEY_WRITE) {
+            if let Ok(app_key) = root.open_subkey_with_flags(app_path, KEY_WRITE) {
                 let _ = app_key.delete_value(&item.key_name);
             }
         }
         "Registry (System 32-bit)" => {
             let path = "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run";
-            let root = winreg::RegKey::predef(HKEY_LOCAL_MACHINE);
-            let subkey = root.open_subkey_with_flags(path, winreg::enums::KEY_WRITE)?;
+            let root = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let subkey = root.open_subkey_with_flags(path, KEY_WRITE)?;
             subkey.delete_value(&item.key_name)?;
 
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32";
-            if let Ok(app_key) = root.open_subkey_with_flags(app_path, winreg::enums::KEY_WRITE) {
+            if let Ok(app_key) = root.open_subkey_with_flags(app_path, KEY_WRITE) {
                 let _ = app_key.delete_value(&item.key_name);
             }
         }
@@ -86,9 +86,9 @@ pub fn delete_startup_item(item: &StartupItem) -> std::io::Result<()> {
                     std::fs::remove_file(dir)?;
                 }
             }
-            let root = winreg::RegKey::predef(HKEY_CURRENT_USER);
+            let root = RegKey::predef(HKEY_CURRENT_USER);
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder";
-            if let Ok(app_key) = root.open_subkey_with_flags(app_path, winreg::enums::KEY_WRITE) {
+            if let Ok(app_key) = root.open_subkey_with_flags(app_path, KEY_WRITE) {
                 let _ = app_key.delete_value(&item.key_name);
             }
         }
@@ -99,9 +99,9 @@ pub fn delete_startup_item(item: &StartupItem) -> std::io::Result<()> {
                     std::fs::remove_file(dir)?;
                 }
             }
-            let root = winreg::RegKey::predef(HKEY_LOCAL_MACHINE);
+            let root = RegKey::predef(HKEY_LOCAL_MACHINE);
             let app_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder";
-            if let Ok(app_key) = root.open_subkey_with_flags(app_path, winreg::enums::KEY_WRITE) {
+            if let Ok(app_key) = root.open_subkey_with_flags(app_path, KEY_WRITE) {
                 let _ = app_key.delete_value(&item.key_name);
             }
         }
